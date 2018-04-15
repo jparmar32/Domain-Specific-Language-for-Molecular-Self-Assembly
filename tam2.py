@@ -491,6 +491,22 @@ def oppositeDirection(self):
     if self == Direction.North: return Direction.South
     if self == Direction.South: return Direction.North
     if self == Direction.Nondet: raise ValueError('there is no opposite of Direction.Nondet')
+    
+def oppositeDirectionHorizontal(self):
+    """Gets opposite direction of West and East Directions; raises ValueError if self is Nondet."""
+    if self == Direction.East: return Direction.West
+    if self == Direction.West: return Direction.East
+    if self == Direction.North: return Direction.North
+    if self == Direction.South: return Direction.South
+    if self == Direction.Nondet: raise ValueError('there is no opposite of Direction.Nondet')
+
+def oppositeDirectionVertical(self):
+    """Gets opposite direction of North and South Directions; raises ValueError if self is Nondet."""
+    if self == Direction.East: return Direction.East
+    if self == Direction.West: return Direction.West
+    if self == Direction.North: return Direction.South
+    if self == Direction.South: return Direction.North
+    if self == Direction.Nondet: raise ValueError('there is no opposite of Direction.Nondet')
 
 def directionShortName(self):
     if self == Direction.East: return 'E'
@@ -2899,9 +2915,6 @@ class Module(object):
         self.name = newName
             
     #takes an existing module and rotates it, so must copy first then rotate
-    #should just rotate the join's direction to the right
-    #make a rotate direction function so no manual chekcs
-    #roatedirectionclockwise90
     def rotateClockwise90(self, tileSetTemplate):
         for nbrhd in self.neighborhood_list:
             newDirection = rotateDirectionClockwise90(nbrhd.direction)
@@ -2912,11 +2925,11 @@ class Module(object):
             newDirection = rotateDirectionClockwise90(join.neighborhood.direction)
             join.neighborhood.direction = newDirection
         
-        
-            
         nameToTTDict = {}
         for tileTemp in self.tile_templates:
             nameToTTDict[tileTemp.name] = tileTemp
+        
+  
             
         for tileTemp in self.tile_templates:
             ttName = tileTemp.name
@@ -2929,8 +2942,7 @@ class Module(object):
                         ttFromTup = tileTemp
                         fromObjTup = (ttFromTup, newFromTupDirection, newFromTupStrength) 
                         tileSetTemplate.tileTempToPortDict.pop(fromObjTup, None)
-                       
-        
+
         for tileTemp in self.tile_templates:
             ttName = tileTemp.name
             if ttName in self.tileTempDictForCopy.keys():
@@ -2957,6 +2969,7 @@ class Module(object):
                             else:
                                 tileSetTemplate.tileTempToPortDict[fromObjTup].append(toObjTup)
         
+
         for tileTemp in self.tile_templates:
             ttName = tileTemp.name
             if ttName in self.tileTempDictReverseForCopy.keys():
@@ -2999,26 +3012,309 @@ class Module(object):
                                 
                             else:
                                 tileSetTemplate.tileTempToPortDictReverse[toObjTupRev].append(fromObjTupRev)
-                        
-             
-        #neighborhood list and joins and tile template joins
+        
+    
     #should just rotate the join's direction to the left
-    def rotateCounterclockwise90(self):
-        pass
-    
-    #horizontal and vertical functions
-    #how would this occur in reference to joins - i.e : W -> E basically?
+    def rotateCounterclockwise90(self, tileSetTemplate):
+        for nbrhd in self.neighborhood_list:
+            newDirection = rotateDirectionCounterclockwise90(nbrhd.direction)
+            nbrhd.direction = newDirection
+            
+        
+        for join in self.joins:
+            newDirection = rotateDirectionCounterclockwise90(join.neighborhood.direction)
+            join.neighborhood.direction = newDirection
+        
+        nameToTTDict = {}
+        for tileTemp in self.tile_templates:
+            nameToTTDict[tileTemp.name] = tileTemp
+        
+  
+            
+        for tileTemp in self.tile_templates:
+            ttName = tileTemp.name
+            if ttName in self.tileTempDictForCopy.keys():
+                tileTempDictList = self.tileTempDictForCopy.get(ttName)
+                for ttDict in tileTempDictList:
+                    for key in ttDict.keys():
+                        newFromTupDirection = key[0]
+                        newFromTupStrength = key[1]
+                        ttFromTup = tileTemp
+                        fromObjTup = (ttFromTup, newFromTupDirection, newFromTupStrength) 
+                        tileSetTemplate.tileTempToPortDict.pop(fromObjTup, None)
+
+        for tileTemp in self.tile_templates:
+            ttName = tileTemp.name
+            if ttName in self.tileTempDictForCopy.keys():
+                tileTempDictList = self.tileTempDictForCopy.get(ttName)
+                for ttDict in tileTempDictList:
+                    for key in ttDict.keys():
+                        newFromTupDirection = key[0]
+                        newFromTupStrength = key[1]
+                        ttFromTup = tileTemp
+                        toTup = ttDict.get(key)
+                        toTTName = toTup[0]
+                        if toTTName in nameToTTDict: 
+                            toTT = nameToTTDict.get(toTTName)
+                            toTTDirection = toTup[1]
+                            toTTStrength = toTup[2]
+                            rotatedFromDirection = rotateDirectionCounterclockwise90(newFromTupDirection)
+                            rotatedToDirection = rotateDirectionCounterclockwise90(toTTDirection)
+                            fromObjTup = (ttFromTup, rotatedFromDirection, newFromTupStrength)
+                            toObjTup = (toTT,rotatedToDirection,toTTStrength)
+                        
+                            if tileSetTemplate.tileTempToPortDict.get(fromObjTup) == None:
+                                tileSetTemplate.tileTempToPortDict[fromObjTup] = [toObjTup]
+                                
+                            else:
+                                tileSetTemplate.tileTempToPortDict[fromObjTup].append(toObjTup)
+        
+
+        for tileTemp in self.tile_templates:
+            ttName = tileTemp.name
+            if ttName in self.tileTempDictReverseForCopy.keys():
+                tileTempDictList = self.tileTempDictReverseForCopy.get(ttName)
+                
+                for ttDict in tileTempDictList:
+                    for key in ttDict.keys():
+                        newToTupDirection = key[0]
+                        newToTupStrength = key[1]
+                        ttToTup = tileTemp
+                        toObjTupRev = (ttToTup, newToTupDirection, newToTupStrength)
+                        tileSetTemplate.tileTempToPortDictReverse.pop(toObjTupRev, None)
+        
+        for tileTemp in self.tile_templates:
+            ttName = tileTemp.name
+            if ttName in self.tileTempDictReverseForCopy.keys():
+                tileTempDictList = self.tileTempDictReverseForCopy.get(ttName)
+                
+                for ttDict in tileTempDictList:
+                    for key in ttDict.keys():
+                        newToTupDirection = key[0]
+                        newToTupStrength = key[1]
+                        ttToTup = tileTemp
+                        fromTup = ttDict.get(key)
+                        
+                        fromTTName = fromTup[0]
+                       
+                        if fromTTName in nameToTTDict: 
+                            fromTT = nameToTTDict.get(fromTTName)
+                            
+                            fromTTDirection = fromTup[1]
+                            fromTTStrength = fromTup[2]
+                            newToTupDirectionRotated = rotateDirectionCounterclockwise90(newToTupDirection)
+                            fromTTDirectionRotated = rotateDirectionCounterclockwise90(fromTTDirection)
+                            toObjTupRev = (ttToTup, newToTupDirectionRotated, newToTupStrength)
+                            fromObjTupRev = (fromTT,fromTTDirectionRotated,fromTTStrength)
+                        
+                            if tileSetTemplate.tileTempToPortDictReverse.get(toObjTupRev) == None:
+                                tileSetTemplate.tileTempToPortDictReverse[toObjTupRev] = [fromObjTupRev]
+                                
+                            else:
+                                tileSetTemplate.tileTempToPortDictReverse[toObjTupRev].append(fromObjTupRev)
+        
+
     #use oppositedirectionfunctions so switch W,E
-    def reflectModuleHorizontal(self):
-        pass
-    #use oppositedirectionfunctions so switch W,E
-    def reflectModuleVertical(self):
-        pass
+    def reflectModuleHorizontal(self, tileSetTemplate):
+        for nbrhd in self.neighborhood_list:
+            newDirection = oppositeDirectionHorizontal(nbrhd.direction)
+            nbrhd.direction = newDirection
+            
+        
+        for join in self.joins:
+            newDirection = oppositeDirectionHorizontal(join.neighborhood.direction)
+            join.neighborhood.direction = newDirection
+        
+        nameToTTDict = {}
+        for tileTemp in self.tile_templates:
+            nameToTTDict[tileTemp.name] = tileTemp
+        
+  
+            
+        for tileTemp in self.tile_templates:
+            ttName = tileTemp.name
+            if ttName in self.tileTempDictForCopy.keys():
+                tileTempDictList = self.tileTempDictForCopy.get(ttName)
+                for ttDict in tileTempDictList:
+                    for key in ttDict.keys():
+                        newFromTupDirection = key[0]
+                        newFromTupStrength = key[1]
+                        ttFromTup = tileTemp
+                        fromObjTup = (ttFromTup, newFromTupDirection, newFromTupStrength) 
+                        tileSetTemplate.tileTempToPortDict.pop(fromObjTup, None)
+
+        for tileTemp in self.tile_templates:
+            ttName = tileTemp.name
+            if ttName in self.tileTempDictForCopy.keys():
+                tileTempDictList = self.tileTempDictForCopy.get(ttName)
+                for ttDict in tileTempDictList:
+                    for key in ttDict.keys():
+                        newFromTupDirection = key[0]
+                        newFromTupStrength = key[1]
+                        ttFromTup = tileTemp
+                        toTup = ttDict.get(key)
+                        toTTName = toTup[0]
+                        if toTTName in nameToTTDict: 
+                            toTT = nameToTTDict.get(toTTName)
+                            toTTDirection = toTup[1]
+                            toTTStrength = toTup[2]
+                            rotatedFromDirection = oppositeDirectionHorizontal(newFromTupDirection)
+                            rotatedToDirection = oppositeDirectionHorizontal(toTTDirection)
+                            fromObjTup = (ttFromTup, rotatedFromDirection, newFromTupStrength)
+                            toObjTup = (toTT,rotatedToDirection,toTTStrength)
+                        
+                            if tileSetTemplate.tileTempToPortDict.get(fromObjTup) == None:
+                                tileSetTemplate.tileTempToPortDict[fromObjTup] = [toObjTup]
+                                
+                            else:
+                                tileSetTemplate.tileTempToPortDict[fromObjTup].append(toObjTup)
+        
+
+        for tileTemp in self.tile_templates:
+            ttName = tileTemp.name
+            if ttName in self.tileTempDictReverseForCopy.keys():
+                tileTempDictList = self.tileTempDictReverseForCopy.get(ttName)
+                
+                for ttDict in tileTempDictList:
+                    for key in ttDict.keys():
+                        newToTupDirection = key[0]
+                        newToTupStrength = key[1]
+                        ttToTup = tileTemp
+                        toObjTupRev = (ttToTup, newToTupDirection, newToTupStrength)
+                        tileSetTemplate.tileTempToPortDictReverse.pop(toObjTupRev, None)
+        
+        for tileTemp in self.tile_templates:
+            ttName = tileTemp.name
+            if ttName in self.tileTempDictReverseForCopy.keys():
+                tileTempDictList = self.tileTempDictReverseForCopy.get(ttName)
+                
+                for ttDict in tileTempDictList:
+                    for key in ttDict.keys():
+                        newToTupDirection = key[0]
+                        newToTupStrength = key[1]
+                        ttToTup = tileTemp
+                        fromTup = ttDict.get(key)
+                        
+                        fromTTName = fromTup[0]
+                       
+                        if fromTTName in nameToTTDict: 
+                            fromTT = nameToTTDict.get(fromTTName)
+                            
+                            fromTTDirection = fromTup[1]
+                            fromTTStrength = fromTup[2]
+                            newToTupDirectionRotated = oppositeDirectionHorizontal(newToTupDirection)
+                            fromTTDirectionRotated = oppositeDirectionHorizontal(fromTTDirection)
+                            toObjTupRev = (ttToTup, newToTupDirectionRotated, newToTupStrength)
+                            fromObjTupRev = (fromTT,fromTTDirectionRotated,fromTTStrength)
+                        
+                            if tileSetTemplate.tileTempToPortDictReverse.get(toObjTupRev) == None:
+                                tileSetTemplate.tileTempToPortDictReverse[toObjTupRev] = [fromObjTupRev]
+                                
+                            else:
+                                tileSetTemplate.tileTempToPortDictReverse[toObjTupRev].append(fromObjTupRev)
+    #use oppositedirectionfunctions so switch N,S
+    def reflectModuleVertical(self, tileSetTemplate):
+        for nbrhd in self.neighborhood_list:
+            newDirection = oppositeDirectionVertical(nbrhd.direction)
+            nbrhd.direction = newDirection
+            
+        
+        for join in self.joins:
+            newDirection = oppositeDirectionVertical(join.neighborhood.direction)
+            join.neighborhood.direction = newDirection
+        
+        nameToTTDict = {}
+        for tileTemp in self.tile_templates:
+            nameToTTDict[tileTemp.name] = tileTemp
+        
+  
+            
+        for tileTemp in self.tile_templates:
+            ttName = tileTemp.name
+            if ttName in self.tileTempDictForCopy.keys():
+                tileTempDictList = self.tileTempDictForCopy.get(ttName)
+                for ttDict in tileTempDictList:
+                    for key in ttDict.keys():
+                        newFromTupDirection = key[0]
+                        newFromTupStrength = key[1]
+                        ttFromTup = tileTemp
+                        fromObjTup = (ttFromTup, newFromTupDirection, newFromTupStrength) 
+                        tileSetTemplate.tileTempToPortDict.pop(fromObjTup, None)
+
+        for tileTemp in self.tile_templates:
+            ttName = tileTemp.name
+            if ttName in self.tileTempDictForCopy.keys():
+                tileTempDictList = self.tileTempDictForCopy.get(ttName)
+                for ttDict in tileTempDictList:
+                    for key in ttDict.keys():
+                        newFromTupDirection = key[0]
+                        newFromTupStrength = key[1]
+                        ttFromTup = tileTemp
+                        toTup = ttDict.get(key)
+                        toTTName = toTup[0]
+                        if toTTName in nameToTTDict: 
+                            toTT = nameToTTDict.get(toTTName)
+                            toTTDirection = toTup[1]
+                            toTTStrength = toTup[2]
+                            rotatedFromDirection = oppositeDirectionVertical(newFromTupDirection)
+                            rotatedToDirection = oppositeDirectionVertical(toTTDirection)
+                            fromObjTup = (ttFromTup, rotatedFromDirection, newFromTupStrength)
+                            toObjTup = (toTT,rotatedToDirection,toTTStrength)
+                        
+                            if tileSetTemplate.tileTempToPortDict.get(fromObjTup) == None:
+                                tileSetTemplate.tileTempToPortDict[fromObjTup] = [toObjTup]
+                                
+                            else:
+                                tileSetTemplate.tileTempToPortDict[fromObjTup].append(toObjTup)
+        
+
+        for tileTemp in self.tile_templates:
+            ttName = tileTemp.name
+            if ttName in self.tileTempDictReverseForCopy.keys():
+                tileTempDictList = self.tileTempDictReverseForCopy.get(ttName)
+                
+                for ttDict in tileTempDictList:
+                    for key in ttDict.keys():
+                        newToTupDirection = key[0]
+                        newToTupStrength = key[1]
+                        ttToTup = tileTemp
+                        toObjTupRev = (ttToTup, newToTupDirection, newToTupStrength)
+                        tileSetTemplate.tileTempToPortDictReverse.pop(toObjTupRev, None)
+        
+        for tileTemp in self.tile_templates:
+            ttName = tileTemp.name
+            if ttName in self.tileTempDictReverseForCopy.keys():
+                tileTempDictList = self.tileTempDictReverseForCopy.get(ttName)
+                
+                for ttDict in tileTempDictList:
+                    for key in ttDict.keys():
+                        newToTupDirection = key[0]
+                        newToTupStrength = key[1]
+                        ttToTup = tileTemp
+                        fromTup = ttDict.get(key)
+                        
+                        fromTTName = fromTup[0]
+                       
+                        if fromTTName in nameToTTDict: 
+                            fromTT = nameToTTDict.get(fromTTName)
+                            
+                            fromTTDirection = fromTup[1]
+                            fromTTStrength = fromTup[2]
+                            newToTupDirectionRotated = oppositeDirectionVertical(newToTupDirection)
+                            fromTTDirectionRotated = oppositeDirectionVertical(fromTTDirection)
+                            toObjTupRev = (ttToTup, newToTupDirectionRotated, newToTupStrength)
+                            fromObjTupRev = (fromTT,fromTTDirectionRotated,fromTTStrength)
+                        
+                            if tileSetTemplate.tileTempToPortDictReverse.get(toObjTupRev) == None:
+                                tileSetTemplate.tileTempToPortDictReverse[toObjTupRev] = [fromObjTupRev]
+                                
+                            else:
+                                tileSetTemplate.tileTempToPortDictReverse[toObjTupRev].append(fromObjTupRev)
+        
+
     
     
     
-    def mirrorCopy(self):
-        pass
     
 
 
@@ -3287,7 +3583,7 @@ class Module(object):
                 #Alters the Glue Annotation for the "East" Side
             
                 retEList = tileSetTemplate.tileTempToPortDictReverse.get(tupE)
-            
+                
                 if retEList is not None:
                 
                     if len(retEList) <= 1: #if there is more than one tuple in the list cant be a port since port only comes alone in a neighborhood
@@ -3960,6 +4256,7 @@ class Module(object):
                                    
                 #east
                 retETileTempList = tileSetTemplate.tileTempToPortDictReverse.get(tupE)
+                
                 if retETileTempList is not None:
                     
                     retETileTemp = retETileTempList[0]
@@ -3971,6 +4268,7 @@ class Module(object):
                                 pass
                             else:
                                 inputNbrhd.glueAnnotation += "-" + toTileTemplateCs.parent.name
+                                
                                 
                             if inputNbrhd != toTileTemplateCs.inputNeighborhood(Direction.West):
                                 if toTileTemplateCs.parent.name in toTileTemplateCs.inputNeighborhood(Direction.West).glueAnnotation:
@@ -4030,6 +4328,7 @@ class Module(object):
                 
                 #north
                 retNTileTempList = tileSetTemplate.tileTempToPortDictReverse.get(tupN)
+            
                 if retNTileTempList is not None:
                     retNTileTemp = retNTileTempList[0]
                     if type(retNTileTemp[0]) in [TileTemplate,Tile]:
@@ -4042,13 +4341,15 @@ class Module(object):
                             else:
                                 inputNbrhd.glueAnnotation += "-" + toTileTemplateCs.parent.name
                                 
+                            
+                            
                             if inputNbrhd != toTileTemplateCs.inputNeighborhood(Direction.South):
                                 
                                 if toTileTemplateCs.parent.name in toTileTemplateCs.inputNeighborhood(Direction.South).glueAnnotation:
                                     pass
                                 else:
                                     toTileTemplateCs.inputNeighborhood(Direction.South).glueAnnotation += "-" + toTileTemplateCs.parent.name
-                  
+                                    
                                 
                         
                 if tupN in tileSetTemplate.tileTempToPortDict.keys():
@@ -4169,7 +4470,57 @@ class Module(object):
                                     pass
                                 else:
                                     toTileTemplateCs.outputNeighborhood(Direction.South).glueAnnotation += "-" + toTileTemplateCs.parent.name
-                                 
+                
+                try: 
+                    if toTileTemplateCs.parent.name not in toTileTemplateCs.inputNeighborhood(Direction.North).glueAnnotation:
+                        if 'rootMod' not in toTileTemplateCs.inputNeighborhood(Direction.North).glueAnnotation:
+                            toTileTemplateCs.inputNeighborhood(Direction.North).glueAnnotation += "-" + tileTemplate.parent.name
+                except ValueError:
+                    pass  
+                try: 
+                    if toTileTemplateCs.parent.name not in toTileTemplateCs.inputNeighborhood(Direction.East).glueAnnotation:
+                        if 'rootMod' not in toTileTemplateCs.inputNeighborhood(Direction.East).glueAnnotation:
+                            toTileTemplateCs.inputNeighborhood(Direction.East).glueAnnotation += "-" + tileTemplate.parent.name
+                except ValueError:
+                    pass
+                try: 
+                    if toTileTemplateCs.parent.name not in toTileTemplateCs.inputNeighborhood(Direction.South).glueAnnotation:
+                        if 'rootMod' not in toTileTemplateCs.inputNeighborhood(Direction.South).glueAnnotation:
+                            toTileTemplateCs.inputNeighborhood(Direction.South).glueAnnotation += "-" + tileTemplate.parent.name
+                except ValueError:
+                    pass
+                try: 
+                    if toTileTemplateCs.parent.name not in toTileTemplateCs.inputNeighborhood(Direction.West).glueAnnotation:
+                        if 'rootMod' not in toTileTemplateCs.inputNeighborhood(Direction.West).glueAnnotation:
+                            toTileTemplateCs.inputNeighborhood(Direction.West).glueAnnotation += "-" + tileTemplate.parent.name
+                except ValueError:
+                    pass   
+                
+                
+                try: 
+                    if toTileTemplateCs.parent.name not in toTileTemplateCs.outputNeighborhood(Direction.North).glueAnnotation:
+                        if 'rootMod' not in toTileTemplateCs.outputNeighborhood(Direction.North).glueAnnotation:
+                            toTileTemplateCs.outputNeighborhood(Direction.North).glueAnnotation += "-" + tileTemplate.parent.name
+                except ValueError:
+                    pass  
+                try: 
+                    if toTileTemplateCs.parent.name not in toTileTemplateCs.outputNeighborhood(Direction.East).glueAnnotation:
+                        if 'rootMod' not in toTileTemplateCs.outputNeighborhood(Direction.East).glueAnnotation:
+                            toTileTemplateCs.outputNeighborhood(Direction.East).glueAnnotation += "-" + tileTemplate.parent.name
+                except ValueError:
+                    pass
+                try: 
+                    if toTileTemplateCs.parent.name not in toTileTemplateCs.outputNeighborhood(Direction.South).glueAnnotation:
+                        if 'rootMod' not in toTileTemplateCs.outputNeighborhood(Direction.South).glueAnnotation:
+                            toTileTemplateCs.outputNeighborhood(Direction.South).glueAnnotation += "-" + tileTemplate.parent.name
+                except ValueError:
+                    pass
+                try: 
+                    if toTileTemplateCs.parent.name not in toTileTemplateCs.outputNeighborhood(Direction.West).glueAnnotation:
+                        if 'rootMod' not in toTileTemplateCs.outputNeighborhood(Direction.West).glueAnnotation:
+                            toTileTemplateCs.outputNeighborhood(Direction.West).glueAnnotation += "-" + tileTemplate.parent.name
+                except ValueError:
+                    pass       
                 
                 
                 
