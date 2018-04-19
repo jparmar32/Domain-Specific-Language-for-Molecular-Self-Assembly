@@ -1569,9 +1569,8 @@ class TileTemplate(object):
         tilePropertiesToSet.update(self.tileTypeArgs)
         tilePropertiesToSet.update(gluePropertiesToSet)
 
-        tile = Tile(name = tilename, **(tilePropertiesToSet)
-        )
-        \
+        tile = Tile(name = tilename, **(tilePropertiesToSet))
+
         return tile
 
     def getStrengthErrors(self):
