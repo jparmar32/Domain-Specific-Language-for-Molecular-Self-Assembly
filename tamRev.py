@@ -5,6 +5,7 @@ Created on Apr 16, 2018
 '''
 
 from __future__ import print_function, division
+from functools import cmp_to_key
 
 import copy,collections
 
@@ -268,7 +269,7 @@ class TileTemplateFromObjNotConfomingtoModuleConfigurationError(TAMError):
         self.toObj = toObj.parent
     def __str__(self):
         return 'the parents of the fromObj,tileTemplate:{0} and the toObj,{1} do not fit an allowed configuration for modules'.format(self.fromObj,self.toObj)
-class PortFromObjNotConformingtoModuleConfigurationError():
+class PortFromObjNotConformingtoModuleConfigurationError(TAMError):
     def __init__(self,fromObj,toObj):
         self.fromObj = fromObj.parent
         self.toObj = toObj.parent
@@ -466,11 +467,29 @@ def Enum(*names):
         Value = property(lambda self: self.__value)
         EnumType = property(lambda self: EnumType)
         def __hash__(self):        return hash(self.__value)
-        def __cmp__(self, other):
-            # C fans might want to remove the following assertion
-            # to make all enums comparable by ordinal value {;))
+        # def __cmp__(self, other):
+        #     # C fans might want to remove the following assertion
+        #     # to make all enums comparable by ordinal value {;))
+        #     assert self.EnumType is other.EnumType, "Only values from the same enum are comparable"
+        #     return self.cmp(self.__value, other.__value)
+        def __eq__(self,other):
             assert self.EnumType is other.EnumType, "Only values from the same enum are comparable"
-            return self.cmp(self.__value, other.__value)
+            return self.__value == other.__value
+        def __ne__(self,other):
+            assert self.EnumType is other.EnumType, "Only values from the same enum are comparable"
+            return self.__value != other.__value
+        def __lt__(self,other):
+            assert self.EnumType is other.EnumType, "Only values from the same enum are comparable"
+            return self.__value < other.__value
+        def __le__(self,other):
+            assert self.EnumType is other.EnumType, "Only values from the same enum are comparable"
+            return self.__value <= other.__value
+        def __gt__(self,other):
+            assert self.EnumType is other.EnumType, "Only values from the same enum are comparable"
+            return self.__value > other.__value
+        def __ge__(self,other):
+            assert self.EnumType is other.EnumType, "Only values from the same enum are comparable"
+            return self.__value >= other.__value
         def __invert__(self):      return constants[maximum - self.__value]
         def __nonzero__(self):     return bool(self.__value)
         def __repr__(self):        return str(names[self.__value])
