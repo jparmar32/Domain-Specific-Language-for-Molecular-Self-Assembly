@@ -1634,7 +1634,7 @@ class TileTemplate(object):
         else:
             outputs = tuple(outputs)
         newTransitions = filter(lambda t: t.outputNames != outputs, self.transitions)
-        if len(newTransitions) != len(self.transitions) - 1:
+        if len(list(newTransitions)) != len(list(self.transitions)) - 1:
             raise NonexistentTransitionError(outputs, self.transitions)
         else:
             self.transitions = newTransitions
