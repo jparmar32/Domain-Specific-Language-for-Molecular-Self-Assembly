@@ -3,38 +3,38 @@ Created on Jun 26, 2017
 
 @author: jupiparmar1
 '''
-import tam
+import tam2
 
 
-N = tam.Direction.North
-S = tam.Direction.South
-E = tam.Direction.East
-W = tam.Direction.West
+N = tam2.Direction.North
+S = tam2.Direction.South
+E = tam2.Direction.East
+W = tam2.Direction.West
 
 #Transition to Port Tile Templates
-msbTrans = tam.TileTemplate(name="msbTrans")
-interiorTrans = tam.TileTemplate(name="interiorTrans")
-lsbTrans = tam.TileTemplate(name="lsbTrans")
+msbTrans = tam2.TileTemplate(name="msbTrans")
+interiorTrans = tam2.TileTemplate(name="interiorTrans")
+lsbTrans = tam2.TileTemplate(name="lsbTrans")
 def addTileTemplatesToModule(tileTempList, module):
     for tile in tileTempList:
         module.add(tile)
 def createBottomLogGrowMod(name,tst):
-    bottomLogGrowMod = tam.Module(name)
+    bottomLogGrowMod = tam2.Module(name)
     #seed tile templates
-    seed1 = tam.TileTemplate(name="Seed1")
-    seed2 = tam.TileTemplate(name="Seed2")
-    seed3 = tam.TileTemplate(name="Seed3")
-    seed4 = tam.TileTemplate(name="Seed4")
-    seed5 = tam.TileTemplate(name="Seed5")
-    seed6 = tam.TileTemplate(name="Seed6")
+    seed1 = tam2.TileTemplate(name="Seed1")
+    seed2 = tam2.TileTemplate(name="Seed2")
+    seed3 = tam2.TileTemplate(name="Seed3")
+    seed4 = tam2.TileTemplate(name="Seed4")
+    seed5 = tam2.TileTemplate(name="Seed5")
+    seed6 = tam2.TileTemplate(name="Seed6")
 
     #tile templates to grow the bottom left module -- growth using binary
-    lsbCp = tam.TileTemplate(name="lsbCp")
-    lsbInc = tam.TileTemplate(name="lsbInc")
-    msbCp = tam.TileTemplate(name="msbCp")
-    msbInc = tam.TileTemplate(name="msbInc")
-    interiorCp = tam.TileTemplate(name="intCp")
-    interiorInc = tam.TileTemplate(name="intInc")
+    lsbCp = tam2.TileTemplate(name="lsbCp")
+    lsbInc = tam2.TileTemplate(name="lsbInc")
+    msbCp = tam2.TileTemplate(name="msbCp")
+    msbInc = tam2.TileTemplate(name="msbInc")
+    interiorCp = tam2.TileTemplate(name="intCp")
+    interiorInc = tam2.TileTemplate(name="intInc")
     tiles = [seed1,seed2,seed3,seed4,seed5,seed6,lsbCp,lsbInc,msbCp,msbInc,interiorCp,interiorInc,msbTrans,interiorTrans,lsbTrans]
     addTileTemplatesToModule(tiles, bottomLogGrowMod)
 
@@ -84,18 +84,18 @@ def createBottomLogGrowMod(name,tst):
 
     return bottomLogGrowMod
 # Beginning tile templates for left transition Module
-msbTransSeed = tam.TileTemplate("msbTransSeed")
-interiorTransSeed = tam.TileTemplate("interiorTransSeed")
-lsbTransSeed = tam.TileTemplate("lsbTransSeed")
-interiorFlipperSeed = tam.TileTemplate("interiorFlipperSeed")
-msbFlipperSeed = tam.TileTemplate("msbFlipperSeed")
+msbTransSeed = tam2.TileTemplate("msbTransSeed")
+interiorTransSeed = tam2.TileTemplate("interiorTransSeed")
+lsbTransSeed = tam2.TileTemplate("lsbTransSeed")
+interiorFlipperSeed = tam2.TileTemplate("interiorFlipperSeed")
+msbFlipperSeed = tam2.TileTemplate("msbFlipperSeed")
 def createLeftTransitionMod(name,tst):
-    leftTransitionMod = tam.Module(name)
+    leftTransitionMod = tam2.Module(name)
     #Tile Templates For Left Transition Module
-    topA = tam.TileTemplate(name="topA")
-    topB = tam.TileTemplate(name="topB")
-    topFillerA = tam.TileTemplate(name="topFillerA")
-    topFillerB = tam.TileTemplate(name="topFillerB")
+    topA = tam2.TileTemplate(name="topA")
+    topB = tam2.TileTemplate(name="topB")
+    topFillerA = tam2.TileTemplate(name="topFillerA")
+    topFillerB = tam2.TileTemplate(name="topFillerB")
     tiles = [msbTransSeed, interiorTransSeed, lsbTransSeed, interiorFlipperSeed, msbFlipperSeed, topA, topB, topFillerA, topFillerB]
     addTileTemplatesToModule(tiles, leftTransitionMod)
 
@@ -127,21 +127,21 @@ def createLeftTransitionMod(name,tst):
 
     return leftTransitionMod
 #Beginning tile templates for top Grow module
-lsbPortTop = tam.TileTemplate(name="lsbPortTop")
-msbPortTop = tam.TileTemplate(name="msbportTop")
-interiorPortTop = tam.TileTemplate(name="intPortTop")
-msbTransTop = tam.TileTemplate("msbTransTop")
-intTransTop = tam.TileTemplate("intTransTop")
-lsbTransTop = tam.TileTemplate("lsbTransTop")
+lsbPortTop = tam2.TileTemplate(name="lsbPortTop")
+msbPortTop = tam2.TileTemplate(name="msbportTop")
+interiorPortTop = tam2.TileTemplate(name="intPortTop")
+msbTransTop = tam2.TileTemplate("msbTransTop")
+intTransTop = tam2.TileTemplate("intTransTop")
+lsbTransTop = tam2.TileTemplate("lsbTransTop")
 def createTopGrowMod(name,tst):
-    topGrowMod = tam.Module(name)
+    topGrowMod = tam2.Module(name)
     #tile templates for Top Grow Module
-    lsbIncTop = tam.TileTemplate(name="lsbIncTop")
-    msbIncTop = tam.TileTemplate(name="msbIncTop")
-    interiorIncTop = tam.TileTemplate(name="intIncTop")
-    lsbCpTop = tam.TileTemplate(name="lsbCpTop")
-    msbCpTop = tam.TileTemplate(name="msbCpTop")
-    interiorCpTop = tam.TileTemplate("interiorCpTop")
+    lsbIncTop = tam2.TileTemplate(name="lsbIncTop")
+    msbIncTop = tam2.TileTemplate(name="msbIncTop")
+    interiorIncTop = tam2.TileTemplate(name="intIncTop")
+    lsbCpTop = tam2.TileTemplate(name="lsbCpTop")
+    msbCpTop = tam2.TileTemplate(name="msbCpTop")
+    interiorCpTop = tam2.TileTemplate("interiorCpTop")
     tiles = [lsbPortTop,msbPortTop,interiorPortTop,msbTransTop,intTransTop,lsbTransTop,lsbIncTop,msbIncTop,interiorIncTop,lsbCpTop,msbCpTop,interiorCpTop]
     addTileTemplatesToModule(tiles, topGrowMod)
     topGrowMod.join(1, N, lsbPortTop, interiorPortTop, tst, portFill = "pF")
@@ -186,18 +186,18 @@ def createTopGrowMod(name,tst):
 
 
     return topGrowMod
-msbStartSeed = tam.TileTemplate("msbStartSeed")
-intStartSeed = tam.TileTemplate("intStartSeed")
-lsbStartSeed = tam.TileTemplate("lsbStartSeed")
-intFlipStartSeed = tam.TileTemplate("intFlipStartSeed")
-msbFlipStartSeed = tam.TileTemplate("msbFlipStartSeed")
+msbStartSeed = tam2.TileTemplate("msbStartSeed")
+intStartSeed = tam2.TileTemplate("intStartSeed")
+lsbStartSeed = tam2.TileTemplate("lsbStartSeed")
+intFlipStartSeed = tam2.TileTemplate("intFlipStartSeed")
+msbFlipStartSeed = tam2.TileTemplate("msbFlipStartSeed")
 def createRightTransitionMod(name,tst):
-    rightTransitionMod = tam.Module(name)
+    rightTransitionMod = tam2.Module(name)
     #Right Transition Module Tile Templates
-    fillerE = tam.TileTemplate(name="fillerE")
-    fillerD = tam.TileTemplate(name="fillerD")
-    topE = tam.TileTemplate(name="topE")
-    topD = tam.TileTemplate(name="topD")
+    fillerE = tam2.TileTemplate(name="fillerE")
+    fillerD = tam2.TileTemplate(name="fillerD")
+    topE = tam2.TileTemplate(name="topE")
+    topD = tam2.TileTemplate(name="topD")
     tiles = [msbStartSeed, intStartSeed, lsbStartSeed, intFlipStartSeed, msbFlipStartSeed, fillerE, fillerD, topE,topD]
     addTileTemplatesToModule(tiles, rightTransitionMod)
 
@@ -228,18 +228,18 @@ def createRightTransitionMod(name,tst):
 
 
     return rightTransitionMod
-msbBotRight = tam.TileTemplate("msbBotRight")
-lsbBotRight = tam.TileTemplate("lsbBotRight")
-intBotRight = tam.TileTemplate("intBotRight")
+msbBotRight = tam2.TileTemplate("msbBotRight")
+lsbBotRight = tam2.TileTemplate("lsbBotRight")
+intBotRight = tam2.TileTemplate("intBotRight")
 def createBottomRightSquareMod(name,tst):
-    bottomRightSquareMod = tam.Module(name)
+    bottomRightSquareMod = tam2.Module(name)
     #Bottom Right Square Module Tile Template
-    fillerH = tam.TileTemplate(name="fillerH")
-    fillerG = tam.TileTemplate(name="fillerG")
-    topH = tam.TileTemplate(name="topH")
-    topG = tam.TileTemplate(name="topG")
-    intBotRightFill = tam.TileTemplate(name="intBotRightFill")
-    msbBotRightFill = tam.TileTemplate(name="msbBotRightFill")
+    fillerH = tam2.TileTemplate(name="fillerH")
+    fillerG = tam2.TileTemplate(name="fillerG")
+    topH = tam2.TileTemplate(name="topH")
+    topG = tam2.TileTemplate(name="topG")
+    intBotRightFill = tam2.TileTemplate(name="intBotRightFill")
+    msbBotRightFill = tam2.TileTemplate(name="msbBotRightFill")
     tiles = [msbBotRight,lsbBotRight,intBotRight,fillerG,fillerH,topG,topH,intBotRightFill,msbBotRightFill]
     addTileTemplatesToModule(tiles, bottomRightSquareMod)
 
@@ -271,14 +271,14 @@ def createBottomRightSquareMod(name,tst):
     return bottomRightSquareMod
 
 #From Ports for bottom left module
-msbPortFrom = tam.initiatorPort("msbPortFrom", 2, False)
-interiorPortFrom = tam.Port("interorPortFrom")
-lsbPortFrom = tam.Port("lsbPortFrom")
+msbPortFrom = tam2.initiatorPort("msbPortFrom", 2, False)
+interiorPortFrom = tam2.Port("interorPortFrom")
+lsbPortFrom = tam2.Port("lsbPortFrom")
 
 #To Ports for left transition Module
-msbPortTo = tam.initiatorPort("msbPortTo", 2, True)
-interiorPortTo = tam.Port("interorPortTo")
-lsbPortTo = tam.Port("lsbPortTo")
+msbPortTo = tam2.initiatorPort("msbPortTo", 2, True)
+interiorPortTo = tam2.Port("interorPortTo")
+lsbPortTo = tam2.Port("lsbPortTo")
 def bottomLogToLeftTransPortJoins(mod1,root,mod2,tst):
     mod1.add_port(msbPortFrom, N)
     mod1.add_port(interiorPortFrom, N)
@@ -305,14 +305,14 @@ def bottomLogToLeftTransPortJoins(mod1,root,mod2,tst):
 
 
 #From Ports for Left Transition Module
-lsbFlipPortFrom = tam.initiatorPort("lsbFlipPortFrom", 2, False)
-interiorFlipPortFrom = tam.Port("interiorFlipPortFrom")
-msbFlipPortFrom = tam.Port("msbFlipPortFrom")
+lsbFlipPortFrom = tam2.initiatorPort("lsbFlipPortFrom", 2, False)
+interiorFlipPortFrom = tam2.Port("interiorFlipPortFrom")
+msbFlipPortFrom = tam2.Port("msbFlipPortFrom")
 
 #To Ports for Top Grow Module
-lsbFlipPortTo = tam.initiatorPort("lsbFlipPortTo", 2, True)
-interiorFlipPortTo = tam.Port("interiorFlipPortTo")
-msbFlipPortTo = tam.Port("msbFlipPortTo")
+lsbFlipPortTo = tam2.initiatorPort("lsbFlipPortTo", 2, True)
+interiorFlipPortTo = tam2.Port("interiorFlipPortTo")
+msbFlipPortTo = tam2.Port("msbFlipPortTo")
 def leftTransToTopGrowPortJoins(mod1,root,mod2,tst):
 
     mod1.add_port(msbFlipPortFrom, E)
@@ -340,14 +340,14 @@ def leftTransToTopGrowPortJoins(mod1,root,mod2,tst):
     mod2.join(1, E, interiorFlipPortTo, interiorPortTop, tst, intPortTop = 0)
 
 #From Ports for Top Grow Module
-msbTopPortFrom = tam.initiatorPort("msbTopPortFrom", 2, False)
-interiorTopPortFrom = tam.Port("interiorTopPortFrom")
-lsbTopPortFrom = tam.Port("lsbTopPortFrom")
+msbTopPortFrom = tam2.initiatorPort("msbTopPortFrom", 2, False)
+interiorTopPortFrom = tam2.Port("interiorTopPortFrom")
+lsbTopPortFrom = tam2.Port("lsbTopPortFrom")
 
 #To Ports for Right Transition Module
-msbTopPortTo = tam.initiatorPort("msbTopPortTo", 2, True)
-interiorTopPortTo = tam.Port("interiorTopPortTo")
-lsbTopPortTo = tam.Port("lsbTopPortTo")
+msbTopPortTo = tam2.initiatorPort("msbTopPortTo", 2, True)
+interiorTopPortTo = tam2.Port("interiorTopPortTo")
+lsbTopPortTo = tam2.Port("lsbTopPortTo")
 def topGrowToRightTransPortJoins(mod1,root,mod2,tst):
     mod1.add_port(msbTopPortFrom, E)
     mod1.add_port(lsbTopPortFrom, E)
@@ -374,14 +374,14 @@ def topGrowToRightTransPortJoins(mod1,root,mod2,tst):
     mod2.join(1, E, lsbTopPortTo, lsbStartSeed, tst, lsbTopPort = "lTP")
 
 #Right Transition Module From Ports
-msbRightTransPort = tam.initiatorPort("msbRightTransPort", 2, False)
-intRightTransPort = tam.Port("intRightTransPort")
-lsbRightTransPort = tam.Port("lsbRightTransPort")
+msbRightTransPort = tam2.initiatorPort("msbRightTransPort", 2, False)
+intRightTransPort = tam2.Port("intRightTransPort")
+lsbRightTransPort = tam2.Port("lsbRightTransPort")
 
 #Bottom Right Square Module To Ports
-msbBotRightPort = tam.initiatorPort("msbBotRightPort", 2, True)
-intBotRightPort = tam.Port("intBotRightPort")
-lsbBotRightPort = tam.Port("lsbBotRightPort")
+msbBotRightPort = tam2.initiatorPort("msbBotRightPort", 2, True)
+intBotRightPort = tam2.Port("intBotRightPort")
+lsbBotRightPort = tam2.Port("lsbBotRightPort")
 def rightTransToBottomRightPortJoins(mod1,root,mod2,tst):
     mod1.add_port(msbRightTransPort, S)
     mod1.add_port(lsbRightTransPort, S)
@@ -409,16 +409,16 @@ def rightTransToBottomRightPortJoins(mod1,root,mod2,tst):
 
 def createTiles(module,tileSetTemplate, filename):
     tiles = module.createTiles(tst)
-    tileSystem = tam.TileSystem(filename,tiles)
+    tileSystem = tam2.TileSystem(filename,tiles)
     tileSystem.writeToFiles(filename)
 
 
 if __name__ == '__main__':
     #create mandatory tile set template
-    tst = tam.TileSetTemplate()
+    tst = tam2.TileSetTemplate()
 
     #create root module
-    rootMod = tam.Module("rootMod")
+    rootMod = tam2.Module("rootMod")
 
     #function for each module to initialize them as well as there joins and tile templates
     bottomLogGrowMod = createBottomLogGrowMod("bottomLogGrowMod", tst)
