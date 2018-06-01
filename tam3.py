@@ -3460,8 +3460,17 @@ class Module(object):
                             outputnames = set()
                             for join in inputNbrhd.joins:
                                 outputnames.add(join.toObj.name)
+                                
+                            inputnamesList = list(inputnames)
+                            inputnamesList.sort()
+                            
+                            outputnamesList = list(outputnames)
+                            outputnamesList.sort()
+                            
+                            ancestorSetList = list(ancestorSet)
+                            ancestorSetList.sort()
 
-                            newGlueAnnotation = ';{0}-{1}>{2}-{3}'.format(','.join(inputnames),directionShortName(Direction.West),','.join(outputnames),",".join(ancestorSet)) #
+                            newGlueAnnotation = ';{0}-{1}>{2}-{3}'.format(','.join(inputnamesList),directionShortName(Direction.West),','.join(outputnamesList),",".join(ancestorSetList)) #
 
                             inputNbrhd.glueAnnotation = newGlueAnnotation
                             outputNbrhd.glueAnnotation = newGlueAnnotation
@@ -3529,8 +3538,18 @@ class Module(object):
 
                             for join in outputNbrhd.joins:
                                 inputnames.add(join.fromObj.name)
+                                
+                            inputnamesList = list(inputnames)
+                            inputnamesList.sort()
+                            
+                            outputnamesList = list(outputnames)
+                            outputnamesList.sort()
+                            
+                        
+                            ancestorSetList = list(ancestorSet)
+                            ancestorSetList.sort()
 
-                            newGlueAnnotation = ';{0}-{1}>{2}-{3}'.format(','.join(inputnames),directionShortName(Direction.West),','.join(outputnames),",".join(ancestorSet))
+                            newGlueAnnotation = ';{0}-{1}>{2}-{3}'.format(','.join(inputnamesList),directionShortName(Direction.West),','.join(outputnamesList),",".join(ancestorSetList))
 
                             inputNbrhd.glueAnnotation = newGlueAnnotation
                             outputNbrhd.glueAnnotation = newGlueAnnotation
@@ -3593,8 +3612,17 @@ class Module(object):
 
                             for join in outputNbrhd.joins:
                                 inputnames.add(join.fromObj.name)
+                                
+                            inputnamesList = list(inputnames)
+                            inputnamesList.sort()
+                            
+                            outputnamesList = list(outputnames)
+                            outputnamesList.sort()
+                            
+                            ancestorSetList = list(ancestorSet)
+                            ancestorSetList.sort()
 
-                            newGlueAnnotation = ';{0}-{1}>{2}-{3}'.format(','.join(inputnames),directionShortName(Direction.West),','.join(outputnames),",".join(ancestorSet))
+                            newGlueAnnotation = ';{0}-{1}>{2}-{3}'.format(','.join(inputnamesList),directionShortName(Direction.West),','.join(outputnamesList),",".join(ancestorSetList))
 
                             inputNbrhd.glueAnnotation = newGlueAnnotation
                             outputNbrhd.glueAnnotation = newGlueAnnotation
@@ -3662,8 +3690,17 @@ class Module(object):
                             outputnames = set()
                             for join in inputNbrhd.joins:
                                 outputnames.add(join.toObj.name)
+                                
+                            inputnamesList = list(inputnames)
+                            inputnamesList.sort()
+                            
+                            outputnamesList = list(outputnames)
+                            outputnamesList.sort()
+                            
+                            ancestorSetList = list(ancestorSet)
+                            ancestorSetList.sort()
 
-                            newGlueAnnotation = ';{0}-{1}>{2}-{3}'.format(','.join(inputnames),directionShortName(Direction.East),','.join(outputnames),",".join(ancestorSet))
+                            newGlueAnnotation = ';{0}-{1}>{2}-{3}'.format(','.join(inputnamesList),directionShortName(Direction.East),','.join(outputnamesList),",".join(ancestorSetList))
 
                             inputNbrhd.glueAnnotation = newGlueAnnotation
                             outputNbrhd.glueAnnotation = newGlueAnnotation
@@ -3728,8 +3765,17 @@ class Module(object):
 
                             for join in outputNbrhd.joins:
                                 inputnames.add(join.fromObj.name)
+                                
+                            inputnamesList = list(inputnames)
+                            inputnamesList.sort()
+                            
+                            outputnamesList = list(outputnames)
+                            outputnamesList.sort()
+                            
+                            ancestorSetList = list(ancestorSet)
+                            ancestorSetList.sort()
 
-                            newGlueAnnotation = ';{0}-{1}>{2}-{3}'.format(','.join(inputnames),directionShortName(Direction.East),','.join(outputnames),",".join(ancestorSet))
+                            newGlueAnnotation = ';{0}-{1}>{2}-{3}'.format(','.join(inputnamesList),directionShortName(Direction.East),','.join(outputnamesList),",".join(ancestorSetList))
 
                             inputNbrhd.glueAnnotation = newGlueAnnotation
                             outputNbrhd.glueAnnotation = newGlueAnnotation
@@ -3793,8 +3839,17 @@ class Module(object):
 
                             for join in outputNbrhd.joins:
                                 inputnames.add(join.fromObj.name)
+                                
+                            inputnamesList = list(inputnames)
+                            inputnamesList.sort()
+                            
+                            outputnamesList = list(outputnames)
+                            outputnamesList.sort()
+                            
+                            ancestorSetList = list(ancestorSet)
+                            ancestorSetList.sort()
 
-                            newGlueAnnotation = ';{0}-{1}>{2}-{3}'.format(','.join(inputnames),directionShortName(Direction.East),','.join(outputnames),",".join(ancestorSet))
+                            newGlueAnnotation = ';{0}-{1}>{2}-{3}'.format(','.join(inputnamesList),directionShortName(Direction.East),','.join(outputnamesList),",".join(ancestorSetList))
 
                             inputNbrhd.glueAnnotation = newGlueAnnotation
                             outputNbrhd.glueAnnotation = newGlueAnnotation
@@ -3859,8 +3914,17 @@ class Module(object):
                             outputnames = set()
                             for join in inputNbrhd.joins:
                                 outputnames.add(join.toObj.name)
+                                
+                            inputnamesList = list(inputnames)
+                            inputnamesList.sort()
+                            
+                            outputnamesList = list(outputnames)
+                            outputnamesList.sort()
+                            
+                            ancestorSetList = list(ancestorSet)
+                            ancestorSetList.sort()
 
-                            newGlueAnnotation = ';{0}-{1}>{2}-{3}'.format(','.join(inputnames),directionShortName(Direction.North),','.join(outputnames),",".join(ancestorSet))
+                            newGlueAnnotation = ';{0}-{1}>{2}-{3}'.format(','.join(inputnamesList),directionShortName(Direction.North),','.join(outputnamesList),",".join(ancestorSetList))
 
                             inputNbrhd.glueAnnotation = newGlueAnnotation
                             outputNbrhd.glueAnnotation = newGlueAnnotation
@@ -3927,8 +3991,17 @@ class Module(object):
 
                             for join in outputNbrhd.joins:
                                 inputnames.add(join.fromObj.name)
+                                
+                            inputnamesList = list(inputnames)
+                            inputnamesList.sort()
+                            
+                            outputnamesList = list(outputnames)
+                            outputnamesList.sort()
+                            
+                            ancestorSetList = list(ancestorSet)
+                            ancestorSetList.sort()
 
-                            newGlueAnnotation = ';{0}-{1}>{2}-{3}'.format(','.join(inputnames),directionShortName(Direction.North),','.join(outputnames),",".join(ancestorSet))
+                            newGlueAnnotation = ';{0}-{1}>{2}-{3}'.format(','.join(inputnamesList),directionShortName(Direction.North),','.join(outputnamesList),",".join(ancestorSetList))
 
                             inputNbrhd.glueAnnotation = newGlueAnnotation
                             outputNbrhd.glueAnnotation = newGlueAnnotation
@@ -3995,8 +4068,17 @@ class Module(object):
 
                             for join in outputNbrhd.joins:
                                 inputnames.add(join.fromObj.name)
+                                
+                            inputnamesList = list(inputnames)
+                            inputnamesList.sort()
+                            
+                            outputnamesList = list(outputnames)
+                            outputnamesList.sort()
+                            
+                            ancestorSetList = list(ancestorSet)
+                            ancestorSetList.sort()
 
-                            newGlueAnnotation = ';{0}-{1}>{2}-{3}'.format(','.join(inputnames),directionShortName(Direction.North),','.join(outputnames),",".join(ancestorSet))
+                            newGlueAnnotation = ';{0}-{1}>{2}-{3}'.format(','.join(inputnamesList),directionShortName(Direction.North),','.join(outputnamesList),",".join(ancestorSetList))
 
                             inputNbrhd.glueAnnotation = newGlueAnnotation
                             outputNbrhd.glueAnnotation = newGlueAnnotation
@@ -4063,8 +4145,17 @@ class Module(object):
                             outputnames = set()
                             for join in inputNbrhd.joins:
                                 outputnames.add(join.toObj.name)
+                                
+                            inputnamesList = list(inputnames)
+                            inputnamesList.sort()
+                            
+                            outputnamesList = list(outputnames)
+                            outputnamesList.sort()
+                            
+                            ancestorSetList = list(ancestorSet)
+                            ancestorSetList.sort()
 
-                            newGlueAnnotation = ';{0}-{1}>{2}-{3}'.format(','.join(inputnames),directionShortName(Direction.South),','.join(outputnames),",".join(ancestorSet))
+                            newGlueAnnotation = ';{0}-{1}>{2}-{3}'.format(','.join(inputnamesList),directionShortName(Direction.South),','.join(outputnamesList),",".join(ancestorSetList))
 
                             inputNbrhd.glueAnnotation = newGlueAnnotation
                             outputNbrhd.glueAnnotation = newGlueAnnotation
@@ -4132,8 +4223,17 @@ class Module(object):
 
                             for join in outputNbrhd.joins:
                                 inputnames.add(join.fromObj.name)
+                                
+                            inputnamesList = list(inputnames)
+                            inputnamesList.sort()
+                            
+                            outputnamesList = list(outputnames)
+                            outputnamesList.sort()
+                            
+                            ancestorSetList = list(ancestorSet)
+                            ancestorSetList.sort()
 
-                            newGlueAnnotation = ';{0}-{1}>{2}-{3}'.format(','.join(inputnames),directionShortName(Direction.South),','.join(outputnames),",".join(ancestorSet))
+                            newGlueAnnotation = ';{0}-{1}>{2}-{3}'.format(','.join(inputnamesList),directionShortName(Direction.South),','.join(outputnamesList),",".join(ancestorSetList))
 
                             inputNbrhd.glueAnnotation = newGlueAnnotation
                             outputNbrhd.glueAnnotation = newGlueAnnotation
@@ -4199,8 +4299,17 @@ class Module(object):
 
                             for join in outputNbrhd.joins:
                                 inputnames.add(join.fromObj.name)
+                                
+                            inputnamesList = list(inputnames)
+                            inputnamesList.sort()
+                            
+                            outputnamesList = list(outputnames)
+                            outputnamesList.sort()
+                            
+                            ancestorSetList = list(ancestorSet)
+                            ancestorSetList.sort()
 
-                            newGlueAnnotation = ';{0}-{1}>{2}-{3}'.format(','.join(inputnames),directionShortName(Direction.South),','.join(outputnames),",".join(ancestorSet))
+                            newGlueAnnotation = ';{0}-{1}>{2}-{3}'.format(','.join(inputnamesList),directionShortName(Direction.South),','.join(outputnamesList),",".join(ancestorSetList))
 
                             inputNbrhd.glueAnnotation = newGlueAnnotation
                             outputNbrhd.glueAnnotation = newGlueAnnotation

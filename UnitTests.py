@@ -1,4 +1,9 @@
 '''
+Created on Apr 16, 2018
+
+@author: Jupinder Parmar
+'''
+'''
 Created on Aug 10, 2016
 
 @author: jupiparmar1
@@ -802,7 +807,7 @@ class Test(unittest.TestCase):
         m2.join(2, tam3.Direction.East, p2, t2, tst, portPass = "1")
         ttTile = m1.createTiles(tst)[1]
         retEastGlue = ttTile.eastglue
-        expEastGlue = ("portPass=1;p2,p1,t3,t1-E>t2-rootMod", 2)
+        expEastGlue = ("portPass=1;p1,p2,t1,t3-E>t2-rootMod", 2)
         self.assertEqual(retEastGlue, expEastGlue)
 
     #North
@@ -836,7 +841,7 @@ class Test(unittest.TestCase):
         m2.join(2, tam3.Direction.North, p2, t2, tst, portPass = "1")
         ttTile = m1.createTiles(tst)[1]
         retNorthGlue = ttTile.northglue
-        expNorthGlue = ("portPass=1;p2,p1,t3,t1-N>t2-rootMod", 2)
+        expNorthGlue = ("portPass=1;p1,p2,t1,t3-N>t2-rootMod", 2)
         self.assertEqual(retNorthGlue, expNorthGlue)
 
 
@@ -871,7 +876,7 @@ class Test(unittest.TestCase):
         m2.join(2, tam3.Direction.South, p2, t2, tst, portPass = "1")
         ttTile = m1.createTiles(tst)[1]
         retSouthGlue = ttTile.southglue
-        expSouthGlue = ("portPass=1;p2,p1,t3,t1-S>t2-rootMod", 2)
+        expSouthGlue = ("portPass=1;p1,p2,t1,t3-S>t2-rootMod", 2)
         self.assertEqual(retSouthGlue, expSouthGlue)
 
     def test_ModuleCreateTilesWithMultiLevelPorts(self):
@@ -907,7 +912,7 @@ class Test(unittest.TestCase):
         m4.join(1, tam3.Direction.South, p4, t3, tst, pP = "2")
         ttTile = m1.createTiles(tst)[0]
         retSouthGlue = ttTile.southglue
-        expSouthGlue = ("pP=2;p2,p3,p1,t2,p4-S>t3-rootMod", 1)
+        expSouthGlue = ("pP=2;p1,p2,p3,p4,t2-S>t3-rootMod", 1)
         self.assertEqual(retSouthGlue, expSouthGlue)
     def test_ModuleCreateTilesWithMultiLevelPortsAncestor(self):
         t1 = tam3.TileTemplate("t1")
@@ -944,7 +949,7 @@ class Test(unittest.TestCase):
         m4.join(1, tam3.Direction.South, p4, t3, tst, pP = "2")
         ttTile = m1.createTiles(tst)[0]
         retSouthGlue = ttTile.southglue
-        expSouthGlue = ("pP=2;p2,p3,p1,t2,p4-S>t3-rootMod,subRootMod", 1)
+        expSouthGlue = ("pP=2;p1,p2,p3,p4,t2-S>t3-rootMod,subRootMod", 1)
         self.assertEqual(retSouthGlue, expSouthGlue)
 
     def test_ModuleJoinWithTransitions(self):
