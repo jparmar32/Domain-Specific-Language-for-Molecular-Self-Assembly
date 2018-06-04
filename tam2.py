@@ -2,33 +2,30 @@
 from __future__ import print_function, division
 
 import copy,collections
-from _collections import deque
-from types import NoneType
-from test.pickletester import initarg
-from test.test_new import NewTest
+
 
 VERBOSE_SIGNALS = True
 
 """Contains classes and functions for creating and
-manipulating 2D tiles and tile assembly systems in the Tile 
+manipulating 2D tiles and tile assembly systems in the Tile
 Assembly Model. The fundamental classes are
 - Multisignal: a mapping type, mapping signal names to values
-- MultisignalType: a mapping type, mapping signal names to lists of valid 
+- MultisignalType: a mapping type, mapping signal names to lists of valid
                    values
-        
+
 - Tile: a type of tile, composed of one glue on each of the four sides, as well
-        as a name, label, and possible other properties such as tilecolor, 
+        as a name, label, and possible other properties such as tilecolor,
         textcolor, concentration, etc.
-            
+
 - TileSystem: a list of unique tiles together with a seed assembly, which is
               a dict mapping 2D coordinates ((int,int) pairs) to Tiles
-              
-- TileTemplate: a class for specifying a family of Tiles that share a common 
-                set of input sides, each with the same GlueTemplate, and a 
+
+- TileTemplate: a class for specifying a family of Tiles that share a common
+                set of input sides, each with the same GlueTemplate, and a
                 common set of output sides, each with the same GlueTemplate.
-                
+
 - TileSetTemplate: a group of TileTemplates and Tiles. This object is
-                   responsible for managing the input-output relationships 
+                   responsible for managing the input-output relationships
                    between the TileTemplates, and can be used to generate a
                    list of all the tiles that are represented by all the
                    TileTemplates (and Tiles) it contains.
@@ -42,13 +39,13 @@ Assembly Model. The fundamental classes are
 class TAMError(Exception):
     """Base class for exceptions produced by the TAM library."""
     pass
-    
+
 class TAMImmediateError(TAMError):
     '''Immediate errors are those that ought to result in an excepton immediately
     being raised, since there is no valid reason to want the error to persist
     even temporarily.'''
     pass
-    
+
 class TAMLazyError(TAMError):
     '''Lazy errors are those that we allow the user to make temporarily, which will
     prevent the tiles from being generated if TileSetTemplate.createTiles is
@@ -62,10 +59,10 @@ class ErrorListError(TAMError):
     TileSetTemplate.createTiles. It can be queried to retrieve that list."""
     def __init__(self, errorList):
         self.errorList = errorList
-        
+
     def errors(self):
         return self.errorList
-        
+
 
 class DuplicateSignalNameConflictingValuesError(TAMError):
     '''JP - Raised to indicated that two different multisignals that wish to be combined must have signals with the same value to be joined'''
@@ -76,8 +73,8 @@ class DuplicateSignalNameConflictingValuesError(TAMError):
         self.multisignal1value = multisignal1value
         self.multisignal2 = multisignal2
         self.multisignal2value = multisignal2value
-    
-        
+
+
     def __str__(self):
         return 'signal {} contained in multisignal {} with value {} and multisignal {} with value {}; must be exactly equal to {} to combine these Multisignals'.format(self.signal_name,
         self.multisignal1,
@@ -102,7 +99,7 @@ class NonexistentTransitionError(TAMError):
     def __init__(self, outputNamesGiven, transitions):
         self.outputNamesGiven = outputNamesGiven
         self.transitions = transitions
-        
+
     def __str__(self):
         return '{0} is not a set of outputs defining any transition in the list {1}'.format(self.outputNamesGiven, self.transitions)
 
@@ -119,11 +116,11 @@ class SignalInvalidNameError(TAMError):
     def __init__(self, invalidName, validNames):
         self.invalidName = invalidName
         self.validNames = validNames
-        
+
     def __str__(self):
         return '"{0}" is an invalid signal name; valid signal names are {1}'.format(
                self.invalidName, self.validNames)
-        
+
 class tooManyInitatiorPortsError(TAMError):
     ''' raised when there are the strength of initiator ports attached to a module is greater than 2 '''
     def __init__(self, moduleName):
@@ -133,16 +130,16 @@ class tooManyInitatiorPortsError(TAMError):
 class portParentConfigurationNotMet(TAMError):
     def __init__(self,tileTemplate):
         self.tileTemplate = tileTemplate
-        
+
     def __str__(self):
         return "The list of ports contained in the portNeihborhod of the tileTemplate: {} do not meet the required parent configuration".format(self.tileTemplate)
 # immediate when joining or rejoining and MultisignalType objects with overlapping signal names are used
 class SignalDuplicateNameError(TAMError):
     """Raised to indicate a duplicate signal name."""
-   
+
     def __init__(self, name):
         self.name = name
-        
+
     def __str__(self):
         return '"{0}" appears more than once as a signal name'.format(self.name)
 # lazy when transition applied for specific TileTemplate
@@ -154,10 +151,10 @@ class DuplicateOutputSignalValues(TAMError):
         self.tileTemplate = tileTemplate
     def __str__(self):
         return "same output multisignal {} for tile template: {} is used in two different directions: {} and {}".format(self.signal_name,self.tileTemplate, self.olddirection, self.newdirection)
-        
-    
 
-# immediate when restricting multisignaltype; 
+
+
+# immediate when restricting multisignaltype;
 # lazy when transition outputs invalid value
 class SignalInvalidValueError(TAMError):
     """Raised to indicate an invalid signal value."""
@@ -168,26 +165,26 @@ class SignalInvalidValueError(TAMError):
     '''JP - added __str__ function as it was not listed before'''
     def __str__(self):
         return 'The signal: {0} contains the invalid value: {1}. Valid values are {2}'.format(self.signalname,self.invalidVal,self.validVals)
-       
+
 # immediate when creating or restricting multisignal type
 class SignalDuplicateValueError(TAMError):
     """Raised to indicate a duplicate signal name."""
     '''JP - TODO: List which duplicate signal valid values are contained?'''
     def __init__(self, vals):
         self.vals = vals
-        
+
     def __str__(self):
         return '"{0}" contains duplicate signal valid values'.format(self.vals)
 
 # immediate; should result in prompting to see if user wants to update other joins
 class SignalMissingNameError(TAMError):
     """Raised to indicate a join is missing a signal name for its neighborhood."""
-    
+
     def __init__(self, neighborhood, join, signalType):
         self.signalType = signalType
         self.neighborhood = neighborhood
         self.join = join
-        
+
     def __str__(self):
         return 'join {0} is missing signal type {1} required for neighborhood {2}'.format(self.join, self.signalType, self.join)
 
@@ -198,18 +195,18 @@ class InputOutputSideConflictError(TAMError):
     def __init__(self, tileTemplate, direction):
         self.tileTemplate = tileTemplate
         self.direction = direction
-        
+
     def __str__(self):
         return 'tile template {0} cannot have side {1} as both an input and output'.format(self.tileTemplate, self.direction)
 
 # lazy
 class StrengthError(TAMError):
-    """Raised to indicate that a join has the incorrect strength, as calculated by the number of input sides on the 
+    """Raised to indicate that a join has the incorrect strength, as calculated by the number of input sides on the
     TileTemplate on the output direction of the join."""
     def __init__(self, tileTemplate, join):
         self.tileTemplate = tileTemplate
         self.join = join
-        
+
     def __str__(self):
         properStrength = 1 if self.tileTemplate.numInputSides() == 2 else 2
         return 'tile template {0} has {1} input sides and must therefore have strength {2} on join {3}'.format(self.tileTemplate, self.tileTemplate.numInputSides(), properStrength, self.join)
@@ -220,7 +217,7 @@ class TooManyInputSidesError(TAMError):
     '''JP - TODO: add which sides act as input sides '''
     def __init__(self, tileTemplate):
         self.tileTemplate = tileTemplate
-        
+
     def __str__(self):
         return 'tile template {0} has {1} input sides but must have at most 2'.format(self.tileTemplate, self.tileTemplate.numInputSides())
 
@@ -231,11 +228,11 @@ class OutputNotComputedError(TAMError):
     def __init__(self, tileTemplate,outputSignal):
         self.tileTemplate = tileTemplate
         self.outputSignal = outputSignal
-   
+
     def __str__(self):
         return 'the output signal {0} for the tile template: {1} was not computed by any transition'.format(self.outputSignal,self.tileTemplate)
 
-# lazy 
+# lazy
 class OutputMultiplyComputedError(TAMError):
     """Raised to indicate that one of the output signals of a TileTemplate has more than one transition computing it."""
 
@@ -247,7 +244,7 @@ class OutputMultiplyComputedError(TAMError):
     def __str__(self):
         return 'the output signal: {0} for the tile template {1} has the following transition computing it {2}, must only be computed by one'.format(self.outputSignal,self.tileTemplate,self.transitions)
 
-    
+
 # lazy because it is only dynamically detectable by calling function with all possible inputs (not all of
 # which may have been specified yet if there are remaining TileTemplates left to wire as inputs to this one)
 class OutputArityError(TAMError):
@@ -297,7 +294,7 @@ class InvalidChooserTileTemplateError(TAMError):
     def __str__(self):
         return 'The tile template(s): {0} are not an element of the tile templates {1} that can be used as an output for the chooser function {2}'.format(self.tileTemplates,self.outputTileTemplates,self.chooserFunction)
 
-    
+
 # lazy
 class MissingChooserError(TAMError):
     """Raised to indicate that the user needs to specify which of multiple TileTemplates to choose for a
@@ -325,19 +322,19 @@ class portsNotConnectedtoTileTemplatesOutput(TAMError):
         self.unvisistedPortsList = unvistedPortsList
     def __str__(self):
         return "The ports within the following list: {0} are not connected to a tile templates output side".format(self.unvisistedPortsList)
-        
+
 class portsNotConnectedToTileTemplatesInput(TAMError):
     def __init__(self, unvistedPortsList):
         self.unvisistedPortsList = unvistedPortsList
     def __str__(self):
         return "The ports within the following list: {0} are not connected to a tile templates input side".format(self.unvisistedPortsList)
-#when there are multiple from objects in a neighborhood and a port is contained in this list 
+#when there are multiple from objects in a neighborhood and a port is contained in this list
 class fromObjectsPortError(TAMError):
     def __init__(self, neighborhood):
         self.neighborhood = neighborhood
     def __str__(self):
         return "The from objects contained within the joins in the neighborhood: {0} have a port when their are multiple objects".format(self.neighborhood)
-#when there are multiple to objects in a neighborhood and a port is contained in this list 
+#when there are multiple to objects in a neighborhood and a port is contained in this list
 class toObjectsPortError(TAMError):
     def __init__(self, neighborhood):
         self.neighborhood = neighborhood
@@ -350,10 +347,10 @@ class NameDifferenceError(TAMError):
     def __init__(self, names1, names2):
         self.names1 = names1
         self.names2 = names2
-        
+
     def __str__(self):
         return 'list of names {0} must be identical to {1}'.format(self.names1, self.names2)
-        
+
 # immediate
 class NameOverlapError(TAMError):
     """Raised to indicate that two multisignals cannot be nameUnion'ed because their signal names are not disjoint."""
@@ -361,7 +358,7 @@ class NameOverlapError(TAMError):
     def __init__(self, names1, names2):
         self.names1 = names1
         self.names2 = names2
-        
+
     def __str__(self):
         return 'list of names {0} must be disjoint from to {1}'.format(self.names1, self.names2)
 
@@ -369,7 +366,7 @@ class NonexistentChooserSetError(TAMError):
     """Raised to indicate that a chooserSet consisting of the set of tiles does not exist."""
     def __init__(self, tileSet):
         self.tileSet = tileSet
-        
+
     def __str__(self):
         nameList = list([tile.name for tile in self.tileSet])
         return 'There is no chooser set consisting of this list of tile templates: {0}'.format(nameList)
@@ -380,7 +377,7 @@ class InputSideMismatchError(TAMError):
         self.tileTemplate = tileTemplate
         self.tileTemplateInDirs = tileTemplateInDirs
         self.chooserSetInDirs = chooserSetInDirs
-        
+
     def __str__(self):
         return 'TileTemplate {0} has input side list {1} which does not match the list for the chooserSet {2}'.format(self.tileTemplate.name, self.tileTemplateInDirs, self.chooserSetInDirs)
 
@@ -391,7 +388,7 @@ class InputSideMismatchError(TAMError):
 # allow multi-arity identity; e.g. identity(3,4,5) = (3,4,5)
 def identity(*x):
     """Return x, returning a tuple for 0-arity or multi-arity calls.
-    
+
     e.g. identity(3,'a',5) = (3, 'a', 5)"""
     if len(x) == 1:
         return x[0]
@@ -399,34 +396,34 @@ def identity(*x):
         return x
 
 def reprByProps(obj):
-    """Create a string representing obj using the properties. 
-    
+    """Create a string representing obj using the properties.
+
     Assumes each property can be specified in the constructor.
-    
-    For instance, an object of type moduleName.A with properties self.a = 123 
-    and self.b = 'abc' would have the string 
+
+    For instance, an object of type moduleName.A with properties self.a = 123
+    and self.b = 'abc' would have the string
     "moduleName.A(a=123,b='abc')" returned.
-    
+
     Except for the top-level call, which always performs this pairing, it uses
     the condition of whether obj defines __repr__ to decide whether to use
     repr(val) to represent an attribute value, or to recurse into the property
     and use reprByProps to represent that value also. The idea is that we
     want to use the object's way of representing itself literally if it has
-    defined one, but since we use this function to make defining __repr__ 
+    defined one, but since we use this function to make defining __repr__
     easier (and not to replace it), we don't want to perform this check on obj
     itself, which will have __repr__ defined but will rely on reprByProps
     to define it.
-    
+
     WARNING: this should only be used to help define __repr__ in the following
     way:
-    
+
     def __repr__(self):
         return tam.reprByProps(self)
-        
+
     Other than that one use case, it should not be called or used directly.
-    
-    This is not a serialization mechanism; it will not handle loops in the 
-    object graph. It is just a way to make creating "standard" __repr__ 
+
+    This is not a serialization mechanism; it will not handle loops in the
+    object graph. It is just a way to make creating "standard" __repr__
     methods easier.
     """
     className = obj.__class__.__name__
@@ -491,7 +488,7 @@ def oppositeDirection(self):
     if self == Direction.North: return Direction.South
     if self == Direction.South: return Direction.North
     if self == Direction.Nondet: raise ValueError('there is no opposite of Direction.Nondet')
-    
+
 def oppositeDirectionHorizontal(self):
     """Gets opposite direction of West and East Directions; raises ValueError if self is Nondet."""
     if self == Direction.East: return Direction.West
@@ -578,9 +575,9 @@ class Tile(object):
         self.westglue = westglue
         self.eastglue = eastglue
         self.parent = None
-    
+
     def clone(self):
-        newName = self.name 
+        newName = self.name
         newLabel = self.label
         newTileColor = self.tilecolor
         newTextColor = self.textcolor
@@ -591,13 +588,13 @@ class Tile(object):
         newEastGlue = self.eastglue
         newTile = Tile(newName, newLabel, newTextColor, newTileColor, newConcentration, newNorthGlue, newSouthGlue, newWestGlue, newEastGlue)
         return newTile
-        
-        
-    
+
+
+
     def __eq__(self, other):
-        return all(self.__dict__[propname] == other.__dict__[propname] 
+        return all(self.__dict__[propname] == other.__dict__[propname]
                    for propname in self.__dict__.keys())
-    
+
     def __ne__(self, other):
         return not (self == other)
 
@@ -628,10 +625,10 @@ CREATE""" % (self.name, self.label, self.tilecolor, self.textcolor,
 
     def __str__(self):
         return self.tdsFormat()
-    
+
     def __repr__(self):
         return reprByProps(self)
-    
+
     def reflectNS(self):
         """Reflect tile north/south."""
         return Tile(
@@ -645,7 +642,7 @@ CREATE""" % (self.name, self.label, self.tilecolor, self.textcolor,
             westglue=self.westglue,
             eastglue=self.eastglue
         )
-        
+
     def reflectEW(self):
         """Reflect tile east/west."""
         return Tile(
@@ -659,7 +656,7 @@ CREATE""" % (self.name, self.label, self.tilecolor, self.textcolor,
             westglue=self.eastglue,
             eastglue=self.westglue
         )
-    
+
     def rotateLeft(self):
         """Rotate tile left."""
         return Tile(
@@ -673,7 +670,7 @@ CREATE""" % (self.name, self.label, self.tilecolor, self.textcolor,
             westglue=self.northglue,
             eastglue=self.southglue
         )
-        
+
     def rotateRight(self):
         """Rotate tile left."""
         return Tile(
@@ -687,10 +684,10 @@ CREATE""" % (self.name, self.label, self.tilecolor, self.textcolor,
             westglue=self.southglue,
             eastglue=self.northglue
         )
-    
+
     def rotate180(self):
         """Rotate tile 180 degrees.
-        
+
         Note that this is different from reflecting since sides along both axes
         are swapped."""
         return Tile(
@@ -704,8 +701,8 @@ CREATE""" % (self.name, self.label, self.tilecolor, self.textcolor,
             westglue=self.eastglue,
             eastglue=self.westglue
         )
-    
-    
+
+
 class TileSystem:
     """
     Represents a tile assembly system. This is a set of tile types, together with
@@ -718,10 +715,10 @@ class TileSystem:
         self.name = name        # name of the tile assembly system
         self.tileTypes = tileTypes    # set of tile types
         self.seedAssembly = seedAssembly  # maps position in Z^3 to tile type
-    
+
     def tdpFormat(self):
         """TDP format of this tile assembly system.
-        
+
         Return a string representing the tile assembly system's .TDP file, suitable
         for creating a file that can be read by the TAS application.
         """
@@ -732,8 +729,8 @@ class TileSystem:
 
     def tdsFormat(self):
         """TDS format of tile set of this tile assembly system.
-        
-        Return a string representing all the tiles in the format recognized 
+
+        Return a string representing all the tiles in the format recognized
         by the TAS application, suitable for writing to a .TDS file.
         """
         return '\n\n'.join(map(Tile.tdsFormat, self.tileTypes))
@@ -760,14 +757,14 @@ class TileSystem:
                 raise ValueError('tile with name {0} already exists'.format(name))
             existingNames.add(name)
         self.tileTypes += tiles
-        
+
     def addToSeedAssembly(self, pos, tile):
         """Add tile to 3D position represented by pos."""
         self.seedAssembly[pos] = tile
-    
+
     def writeToFiles(self, outFilename):
         """Write out tile assembly system to files for use by TAS program.
-        
+
         Write the given tileSystem to the files named <outFilename>.tdp
         (for tile system) and <outFilename>.tds (for tile set), in the format
         recognized by the TAS application.
@@ -785,8 +782,8 @@ def isSequence(seq):
 
 class MultisignalType(object):
     """Tuple of signal types.
-    
-    Each signal type is a pair (name, validValues), where name is a string 
+
+    Each signal type is a pair (name, validValues), where name is a string
     representing the name of the signal and valid values is a list of strings
     representing the values the signal can take."""
     def __init__(self, verbose=VERBOSE_SIGNALS, **signalTypeDict):
@@ -801,36 +798,36 @@ class MultisignalType(object):
         for validVals in self.signalTypeDict.values():
             if len(set(validVals)) != len(validVals):
                 raise SignalDuplicateValueError(validVals)
-        
-       
+
+
     def noChoiceMultisignal(self):
         """Returns the multisignal consisting of those signals which have only one valid value"""
 
-        ret = Multisignal([(signalName, signalValues[0]) for (signalName,signalValues) in self.signalTypeDict.items() 
+        ret = Multisignal([(signalName, signalValues[0]) for (signalName,signalValues) in self.signalTypeDict.items()
                                if len(signalValues) == 1])
         return ret
-       
+
     def __len__(self):
         return len(self.signalTypeDict)
 
     def names(self):
         """Return list of signal names."""
         return [name for (name, values) in self.signalTypeList]
-    
+
     @classmethod
     def empty(verbose=VERBOSE_SIGNALS):
         return MultisignalType(**dict())
-            
+
     def clone(self):
         newDict = dict(self.signalTypeDict)
         newMultisignalType = MultisignalType(self.verbose, **newDict)
         return newMultisignalType
 #         return MultisignalType(self.verbose, **dict(self.signalTypeDict))
-        
+
     def updateSignalTypeList(self):
         self.signalTypeList = list(self.signalTypeDict.items())
         self.signalTypeList.sort(key=lambda (name, vals): name)
-        
+
     def addSignalTypes(self, **newSignalTypeDict):
         """Add new signal types."""
         for validVals in newSignalTypeDict.values():
@@ -842,7 +839,7 @@ class MultisignalType(object):
             self.signalTypeDict[name] = tuple(validVals)
             self.signalTypeList.append((name, validVals))
         self.signalTypeList.sort(key=lambda (name, vals): name)
-        
+
     def removeSignalTypes(self, *names):
         """Remove signal types with the given names."""
         for name in names:
@@ -851,7 +848,7 @@ class MultisignalType(object):
             del self.signalTypeDict[name]
         self.signalTypeList = list(self.signalTypeDict.items())
         self.signalTypeList.sort(key=lambda (name, vals): name)
-        
+
     def create(self, **nameValDict):
         """Create a multisignal with the specified mapping of names to values."""
         for name, val in nameValDict.items():
@@ -865,7 +862,7 @@ class MultisignalType(object):
 
     def createNoNameCheck(self, **nameValDict):
         """Create a multisignal with the specified mapping of names to values.
-        
+
         The names are not checked, so the given nameValDict could contain
         more or fewer signal names than this MultisignalType represents."""
         for name, val in nameValDict.items():
@@ -879,10 +876,10 @@ class MultisignalType(object):
 
     def restrict(self, **nameValuesDict):
         """Create a MultisignalType with the given restrictions of values.
-        
+
         Assume for any unspecified signal name that all original values are kept."""
         for name, values in nameValuesDict.items():
-            if not isSequence(values): 
+            if not isSequence(values):
                 nameValuesDict[name] = values = (values,)
             if name not in self.signalTypeDict:
                 raise SignalInvalidNameError(name, self.signalTypeDict.keys())
@@ -894,7 +891,7 @@ class MultisignalType(object):
             if name not in nameValuesDict:
                 nameValuesDict[name] = values
         return MultisignalType(verbose=self.verbose, **nameValuesDict)
-        
+
     def __getitem__(self, name):
         """Allows multisignals to index values by name; i.e. ms['bit'] == ['0','1']"""
         return self.signalTypeDict[name]
@@ -907,13 +904,13 @@ class MultisignalType(object):
     def __delitem__(self, name):
         """Allows multisignals to delete values by name; i.e. del(ms['bit'])"""
         del(self.signalTypeDict[name])
-        self.signalTypeList = [(sigName, validVals) 
-                               for (sigName, validVals) in self.signalTypeList 
+        self.signalTypeList = [(sigName, validVals)
+                               for (sigName, validVals) in self.signalTypeList
                                if name != sigName]
 
     def __str__(self):
         return ';'.join('{0}:{1}'.format(name, validVals) for name, validVals in self.signalTypeList)
-    
+
     def __repr__(self):
         return (("tam.MultisignalType(verbose={v}, "
              + "**{signalTypeDict})").format(
@@ -921,7 +918,7 @@ class MultisignalType(object):
 
     def __iter__(self):
         return self.multisignals()
-    
+
     def multisignals(self):
         """Enumerate all possible multisignals represented by this type."""
         lengths = [len(values) for name, values in self.signalTypeList]
@@ -941,7 +938,7 @@ class MultisignalType(object):
                     curSignalIndices[i] = 0
                 else:
                     break
-                
+
     def __eq__(self, other):
         if set(self.signalTypeDict.keys()) != set(other.signalTypeDict.keys()):
             return False
@@ -956,16 +953,16 @@ class MultisignalType(object):
 
     def __hash__(self):
         return hash(tuple(self.signalTypeList))
-    
+
     def nameUnion(self, other):
         """Combine signal types with disjoint names to be the union of the signal types.
-        
+
         For instance,
-        
+
             carryMst = tam.MultisignalType(carry=['n','c'])
             borrowMst = tam.MultisignalType(borrow=['nb','b'])
             carryBorrowMst = carryMst.nameUnion(borrowMst)
-        
+
         creates a MultisignalType that can represent a carry and a borrow
         simultaneously. They must also have disjoint signal names.
         """
@@ -976,17 +973,17 @@ class MultisignalType(object):
         signalTypeDict.update(other.signalTypeDict)
         newMst = MultisignalType(verbose=self.verbose, **signalTypeDict)
         return newMst
-    
+
     def valueUnion(self, other):
         """Combine signal types with the same names by taking the union of their
         values for each shared name.
-        
+
         For instance,
-        
+
             carryMst = tam.MultisignalType(carry=['n','c'])
             borrowMst = tam.MultisignalType(carry=['n','b'])
             carryBorrowMst = carryMst.valueUnion(borrowMst)
-        
+
         creates a MultisignalType that can represent a carry with values
         ['n','b','c']. They must also have exactly the same signal names.
         """
@@ -997,7 +994,7 @@ class MultisignalType(object):
             signalTypeDict[name] = list(set(signalTypeDict[name] + other.signalTypeDict[name]))
         newMst = MultisignalType(verbose=self.verbose, **signalTypeDict)
         return newMst
-    
+
     def isValidMultisignal(self, ms):
         """Indicates whether ms is a Multisignal that this MultisignalType produces."""
         if set(ms.nameValDict.keys()) != set(self.signalTypeDict.keys()):
@@ -1006,27 +1003,27 @@ class MultisignalType(object):
             if value not in self.signalTypeDict[name]:
                 return False
         return True
-    
+
 
 
 class Multisignal:
     """Tuple of signals.
-    
+
     Do not use the constructor; use MultisignalType.createMultisignal
-    
+
     If you must use this constructor, pass it a list of (key,value) pairs."""
     def __init__(self, nameValList, verbose=VERBOSE_SIGNALS):
         self.nameValDict = dict(nameValList)
         self.nameValList = sorted(nameValList)
         self.verbose = verbose
-        
+
     def __str__(self):
         """Return string in a format suitable for using as a glue label."""
         if self.verbose:
             return ','.join('{0}={1}'.format(name, val) for name, val in self.nameValList)
         else:
             return ','.join('{0}'.format(val) for name, val in self.nameValList)
-    
+
     def __len__(self):
         return len(self.nameValDict)
 
@@ -1034,7 +1031,7 @@ class Multisignal:
         return (("tam.Multisignal(nameValList={nameValList}, "
              + "verbose={verbose})").format(nameValList=self.nameValList,
                                            verbose=self.verbose))
-    
+
     def __getitem__(self, name):
         """Allows multisignals to index values by name; i.e. ms['bit'] == '1'"""
         try:
@@ -1052,20 +1049,20 @@ class Multisignal:
     def __delitem__(self, name):
         """Allows multisignals to delete values by name; i.e. del(ms['bit'])"""
         del(self.nameValDict[name])
-        self.nameValList = [(sigName, val) 
-                            for (sigName, val) in self.nameValList 
+        self.nameValList = [(sigName, val)
+                            for (sigName, val) in self.nameValList
                             if name != sigName]
 
     def __eq__(self, other):
         """Indicate if these represent the same name/value pairs; ignores verbosity."""
         return self.nameValList == other.nameValList
-        
+
     def __ne__(self, other):
         return not (self == other)
-    
+
     def __hash__(self):
         return hash(tuple(self.nameValList))
-    
+
     def __add__(self, other):
         selfNameSet = set(name for (name,value) in self.nameValList)
         otherNameSet = set(name for (name,value) in other.nameValList)
@@ -1074,7 +1071,7 @@ class Multisignal:
         nameValList = self.nameValList + other.nameValList
         nameValList.sort(key=lambda (name, value): name)
         return Multisignal(nameValList, verbose=self.verbose)
-    
+
     def nameUnionDuplicateSignalAllowed(self, other):
         '''JP - Indicates that two different multisignals have a common signal between them'''
         selfNameSet = set(name for (name,value) in self.nameValList)
@@ -1090,11 +1087,11 @@ class Multisignal:
             nameValList = self.nameValList + other.nameValList
         nameValList.sort(key=lambda (name, value): name)
         return Multisignal(nameValList, verbose=self.verbose)
-    
+
     def __iter__(self):
         """Iterate over (name,value) pairs of this multisignal."""
         return iter(self.nameValList)
-    
+
 
 
 
@@ -1103,14 +1100,14 @@ class Multisignal:
 
 class GlueTemplate:
     """A GlueTemplate represents a "type of glue".
-    
+
     A GlueTemplate specifies a binding strength and a MultisignalType.
-    
-    It is for binding tiles in specific positions in an assembly, and 
+
+    It is for binding tiles in specific positions in an assembly, and
     encompasses a collection of related glues.
     It is not intended for direct use by client code, but is used to configure
     signal passing between TileTemplates by the tam library.
-    
+
     A GlueTemplate is added as either an input side or an output side to a
     TileTemplate; while nothing prevents doing otherwise, it only makes sense
     to add a GlueTemplate as an input side to at least one TileTemplate and as
@@ -1120,7 +1117,7 @@ class GlueTemplate:
     def __init__(self, strength=1, multisignalType=MultisignalType(verbose=False)):
         self.strength = strength
         self.multisignalType = multisignalType
-    
+
     def create(self, **nameValDict):
         """Converts a name/value dict to a glue, a pair (label,strength).
         The multisignal is presented as a keyword argument list.
@@ -1128,15 +1125,15 @@ class GlueTemplate:
         enabled for this TileTemplate; otherwise the format is
         value1,value2,..."""
         return (str(self.multisignalType.create(**nameValDict)), self.strength)
-    
+
     def createLabel(self, **nameValDict):
-        """Converts a dict of name:value pairs to a string representing the 
+        """Converts a dict of name:value pairs to a string representing the
         glue label.
         The form is 'name1=value1,name2=value2,...' if property names are
         enabled for this TileTemplate; otherwise the format is
         value1_value2..."""
         return (self.create(**nameValDict))[0]
-    
+
     def __str__(self):
         return '[strength={0}, multisignalType={1}]'.format(
             self.strength, self.multisignalType)
@@ -1170,27 +1167,27 @@ class Transition:
     of a tile from input signals."""
     def __init__(self, inputs=(), outputs=(), function=None, expression=None, table=None):
         """Add a transition computing output signal(s) to this TileTemplate.
-        
+
         inputs and outputs are lists of strings specifying the names of the input
-        and output signal names, in the order in which the function transition 
+        and output signal names, in the order in which the function transition
         receives them as arguments or returns them in a tuple."""
         self.function = ensureIsFunction(inputs, function, expression, table)
         self.inputNames = tuple(inputs)
         self.outputNames = tuple(outputs)
-    
+
 #     def clone(self):
 #         return Transition(self.inputs, self.outputs, self.function)
-    
+
     def __call__(self, *args):
         """Call this transition's function."""
         return self.function(*args)
-    
+
     def apply(self, inputMultisignal):
         """Call this transition's function with the given input multisignal
         and return an output multisignal.
-        
+
         The difference between this and __call__ is the preservation of input
-        and output names instead of positional parameters for input and 
+        and output names instead of positional parameters for input and
         output tuples for output."""
         inputValues = [inputMultisignal[inputName] for inputName in self.inputNames]
         # compute output from input
@@ -1201,7 +1198,7 @@ class Transition:
         # place output in a tuple if it is not a sequence already
         if not isSequence(outputValues):
             outputValues = (outputValues,)
-        outputNameValueList = [(self.outputNames[pos], outputValue) 
+        outputNameValueList = [(self.outputNames[pos], outputValue)
                                for (pos,outputValue) in enumerate(outputValues)]
         outputMultisignal = Multisignal(outputNameValueList, verbose=inputMultisignal.verbose)
         return outputMultisignal
@@ -1212,11 +1209,11 @@ class PropertyFunction:
     either output and/or input signals."""
     def __init__(self, inputs=(), outputs=(), function=None, expression=None):
         """Add a transition computing output signal(s) to this TileTemplate.
-        
+
         inputs and outputs are lists of strings specifying the names of the input
-        and output signal names, in the order in which the function transition 
+        and output signal names, in the order in which the function transition
         receives them as arguments or returns them in a tuple.
-        
+
         Note that names in expression can refer only to signal names that are
         contained in exactly one of inputNames or outputNames. Otherwise, the
         positional ordering of inputs to function must be used, in which
@@ -1230,11 +1227,11 @@ class PropertyFunction:
         outputNamesSet = set(outputs)
         if not (inputNamesSet.isdisjoint(outputNamesSet)):
             raise SignalDuplicateNameError(inputNamesSet & outputNamesSet)
-        
-        self.function = ensureIsFunction(inputs + outputs, function, expression, None)        
+
+        self.function = ensureIsFunction(inputs + outputs, function, expression, None)
         self.inputNames = inputs
         self.outputNames = outputs
-    
+
     def apply(self, inputMultisignal, outputMultisignal):
         """Call this transition's function with the given input and output
         multisignals and return the value of the property."""
@@ -1249,11 +1246,11 @@ class ChooserFunction:
     within a chooserSet for a given input multisignal."""
     def __init__(self, inputNames=(), function=None, expression=None, table=None):
         """Add a function for selecting the appropriate tileTemplate from a chooserSet.
-        
+
         inputs and outputs are lists of strings specifying the names of the input
-        and output signal names, in the order in which the function transition 
+        and output signal names, in the order in which the function transition
         receives them as arguments or returns them in a tuple.
-        
+
         Note that names in expression can refer only to signal names that are
         contained in exactly one of inputNames or outputNames. Otherwise, the
         positional ordering of inputs to function must be used, in which
@@ -1262,9 +1259,9 @@ class ChooserFunction:
         if not isSequence(inputNames):
             inputNames = (inputNames,)
 
-        self.function = ensureIsFunction(inputNames, function, expression, table)        
+        self.function = ensureIsFunction(inputNames, function, expression, table)
         self.inputNames = inputNames
-    
+
     def apply(self, inputMultisignal):
         """Call this transition's function with the given input and output
         multisignals and return the value of the property."""
@@ -1272,10 +1269,10 @@ class ChooserFunction:
         # compute output from input
         tileNames = ensureIsSequence(self.function(*(inputValues)))
         return tileNames
-    
+
 
 def expressionToFunction(expression, inputNames):
-    """Turns an expression as a string, with a list of input names, into a 
+    """Turns an expression as a string, with a list of input names, into a
     function taking parameters with those names as inputs, which returns the
     value of the expression."""
     def function(*vargs):
@@ -1286,8 +1283,8 @@ def expressionToFunction(expression, inputNames):
 
 
 def tableToFunction(table):
-    """Turns a table of input/output pairs of tuples (implemented either as a 
-    list of pairs of input/output tuples, or a dict mapping input tuples to 
+    """Turns a table of input/output pairs of tuples (implemented either as a
+    list of pairs of input/output tuples, or a dict mapping input tuples to
     output tuples) into a function taking parameters, which returns the
     value of the output tuple, or raises a ValueError if the input tuple is not
     in the table."""
@@ -1316,7 +1313,7 @@ class TileTemplate(object):
     """Represents a "kind of tile type", a family of related tile types.
     It can only be used for specifying a collection of related tiles
     that all share the same input/output/terminal side designations.
-    
+
     A TileTemplate consists of 1-4 (GlueTemplates, direction) pairs, one for
     each of the north, south, east, and west sides of the tile type,
     specifying the type of glue that goes on that side and whether it is an
@@ -1330,12 +1327,12 @@ class TileTemplate(object):
     produced on that side. Each tile type produced by this template will be
     given a unique name and label based on the input side glues.
     """
-    
+
     def __init__(self, name, **tileTypeArgs):
         """Create a TileTemplate with all terminal sides.
         tileTypeArgs is a dict specifying extra keyword arguments to be passed
         to the TileType constructor when creating tile types; for instance,
-        tilecolor or textcolor. It should not contain any of the glues or 
+        tilecolor or textcolor. It should not contain any of the glues or
         label or name, as these are computed from the input signals. This means
         that TileTemplates can be fed these arguments, e.g.:
           tileTemplate = TileTemplate(name='start',tilecolor='green',textcolor='orange')
@@ -1351,9 +1348,9 @@ class TileTemplate(object):
         #TODO: compute next two on the fly from joins as they are needed
         self.outputObjectDict = {}
         self.inputObjectDict = {}
-        
+
     def clone(self):
-        new_name = self.name 
+        new_name = self.name
         newTileTypeArgs = dict(self.tileTypeArgs)
         newAuxInputMultisignalType = self.auxiliaryInputMultisignalType.clone()
         #TODO: change if deep copy is needed
@@ -1369,20 +1366,20 @@ class TileTemplate(object):
         newTT.propertyFunctions = newPropertyFunctions
         newTT.transitions = newTransitions
         return newTT
-    
-        
-        
+
+
+
     def __repr__(self):
         return self.name
-        
+
     def addAuxiliaryInput(self, multisignalType):
         """Used to allow two or more tile types with the same input signal values to nondeterministically compete to bind.
-        
+
         The auxiliary input multisignal type is used to create different tile types with the same input multisignal
         but different output multisignals. An auxiliary input multisignal is given to the transitions, along with
         the input multisignals that are actually coming from input directions, and all of these together are
         used by the transitions to determine output signal values.
-        
+
         There are other ways to add nondeterminism (e.g., chooser functions to choose among different tile templates)
         but this is used to have nondeterminism within a single TileTemplate."""
         self.auxiliaryInputMultisignalType = self.auxiliaryInputMultisignalType.nameUnion(multisignalType)
@@ -1399,9 +1396,9 @@ class TileTemplate(object):
         if self.auxiliaryInputMultisignalType:
             ret[Direction.Nondet] = self.auxiliaryInputMultisignalType
         return ret
-    
+
     def outputDirMultisignalTypeDict(self):
-        """Return dict mapping (direction, MultisignalType), 
+        """Return dict mapping (direction, MultisignalType),
         of output multisignal types."""
         ret = collections.defaultdict(MultisignalType)
         for join in self.outputJoins:
@@ -1412,7 +1409,7 @@ class TileTemplate(object):
                 ret[direction] = join.multisignalType
 
         return ret
-    
+
     def inputDirMultisignalTypeList(self):
         """Return list of pairs (direction, MultisignalType), in alphabetical
         order of direction, including Nondet, of input multisignal types."""
@@ -1420,7 +1417,7 @@ class TileTemplate(object):
         ret = list(ret.items())
         ret.sort()
         return ret
-    
+
     def outputDirMultisignalTypeList(self):
         """Return list of pairs (direction, MultisignalType), in alphabetical
         order of direction, of output multisignal types."""
@@ -1471,10 +1468,10 @@ class TileTemplate(object):
             return [self.createTileFromFullInputMultisignal(inputMultisignal + auxiliaryInputMultisignal) for auxiliaryInputMultisignal in self.auxiliaryInputMultisignalType]
         else:
             return [self.createTileFromFullInputMultisignal(inputMultisignal)]
-    
+
     def createTileFromFullInputMultisignal(self, inputMultisignal):
         """Create a tile from the input multisignal provided."""
-        inputDirMultisignalTypeList = self.inputDirMultisignalTypeList()   
+        inputDirMultisignalTypeList = self.inputDirMultisignalTypeList()
 
         separator = '_' if len(inputMultisignal.nameValDict) > 0 else ''
         tilename = self.name + separator + '_'.join('{0}:{1}'.format(
@@ -1482,7 +1479,7 @@ class TileTemplate(object):
             for (direction, multisignalType) in inputDirMultisignalTypeList
         )
         northglue,southglue,eastglue,westglue = [None]*4
-        
+
         # set input glues
         for direction,multisignalType in inputDirMultisignalTypeList:
             # TODO: figure out why a new Multisignal is created from inputMultisignal, when it already is a Multisignal
@@ -1498,11 +1495,11 @@ class TileTemplate(object):
             else: raise ValueError('{0} is not a valid direction'.format(direction))
 
         outputMultisignal = Multisignal({})
-         
+
         # populate outputMultisignal
         for transition in self.transitions:
             outputMultisignal += transition.apply(inputMultisignal)
-        
+
         # set output glues
         completeOutputMultisignal = Multisignal({})
         outputDirMultisignalTypeList = self.outputDirMultisignalTypeList()
@@ -1515,47 +1512,47 @@ class TileTemplate(object):
                 completeOutputMultisignal = completeOutputMultisignal.nameUnionDuplicateSignalAllowed(outputDirMultisignal)
             except DuplicateSignalNameConflictingValuesError as error:
                  raise error
-                
+
             glueLabel = str(outputDirMultisignal)
             outputNeighborhood = self.outputNeighborhood(direction)
             glueAnnotation = outputNeighborhood.glueAnnotation
-            
+
             glue = (glueLabel + glueAnnotation, outputNeighborhood.strength)
             if   direction == N: northglue = glue
             elif direction == S: southglue = glue
             elif direction == W: westglue = glue
             elif direction == E: eastglue = glue
             else: raise ValueError('{0} is not a valid direction'.format(direction))
-        
+
         # set property values
         tilePropertiesToSet = {}
         for propertyName,propertyFunction in self.propertyFunctions.items():
             propertyValue = propertyFunction.apply(inputMultisignal, completeOutputMultisignal)
             tilePropertiesToSet[propertyName] = propertyValue
-        
+
         # place calculated glues in tileProperties to set along with other properties
 
         gluePropertiesToSet = {}
-        for glue,gluename in zip((northglue,southglue,eastglue,westglue), 
+        for glue,gluename in zip((northglue,southglue,eastglue,westglue),
                                  ('northglue','southglue','eastglue','westglue')):
-            
+
             if glue:
 #                if gluename in self.tileTypeArgs:
-#                    raise ValueError('glue {0} is already hardcoded into {1} and cannot be calculated'.format(gluename, self)) 
+#                    raise ValueError('glue {0} is already hardcoded into {1} and cannot be calculated'.format(gluename, self))
                 gluePropertiesToSet[gluename] = glue
-                
-        
+
+
         tilePropertiesToSet.update(self.tileTypeArgs)
         tilePropertiesToSet.update(gluePropertiesToSet)
-      
+
         tile = Tile(name = tilename, **(tilePropertiesToSet)
         )
         \
         return tile
-    
+
     def getStrengthErrors(self):
         """Return list of errors associated with strength mismatches.
-        
+
         If the number of input sides is 1, the strength must be 2.
         If the number of input sides is 2, the strength of each must be 1.
         If the number of input sides is > 2, this alone constitutes an error. """
@@ -1573,12 +1570,12 @@ class TileTemplate(object):
         if self.numInputSides() > 2:
             errors.append(TooManyInputSidesError(self))
         return errors
-    
+
     def isValidInputMultisignal(self, ms):
         """Indicates whether ms is a valid multisignal for this TileTemplate's total input multisignal type."""
         inputMultisignalType = self.inputMultisignalType()
         return inputMultisignalType.isValidMultisignal(ms)
-    
+
     def inputMultisignalType(self, direction=None):
         """If direction is None or unspecified, returns multisignal type of all inputs.
         if direction is one of Direction enum values, then returns the MultisignalType
@@ -1591,22 +1588,22 @@ class TileTemplate(object):
         else:
             mst = mstDict[direction]
         return mst
-        
-    def addTransition(self, inputs=(), outputs=(), function=None, 
+
+    def addTransition(self, inputs=(), outputs=(), function=None,
                       expression=None, table=None):
         """Add a transition computing output signal(s) to this TileTemplate.
-        
+
         inputs and outputs are lists of strings specifying the names of the input
-        and output signal names, in the order in which the function transition 
+        and output signal names, in the order in which the function transition
         receives them as arguments or returns them in a tuple."""
         inputs = ensureIsSequence(inputs)
         outputs = ensureIsSequence(outputs)
-        self.transitions.append(Transition(inputs=inputs, outputs=outputs, 
+        self.transitions.append(Transition(inputs=inputs, outputs=outputs,
                     function=function, expression=expression, table=table))
-        
+
     def removeTransition(self, outputs):
         """Removes the transition with the given list of output signal names.
-        
+
         If no such tuple of output signal names exists, raises a TODO"""
         if not isSequence(outputs):
             outputs = (outputs,)
@@ -1617,38 +1614,38 @@ class TileTemplate(object):
             raise NonexistentTransitionError(outputs, self.transitions)
         else:
             self.transitions = newTransitions
-    
+
     def setPropertyFunction(self, name, inputs=[], outputs=[], function=None, expression=None):
-        self.propertyFunctions[name] = PropertyFunction(inputs=inputs, 
+        self.propertyFunctions[name] = PropertyFunction(inputs=inputs,
             outputs=outputs, function=function, expression=expression)
-        
+
     def setLabelFunction(self, inputs=[], outputs=[], function=None, expression=None):
         self.setPropertyFunction('label', inputs, outputs, function, expression)
-        
+
     def setConcentrationFunction(self, inputs=[], outputs=[], function=None, expression=None):
         self.setPropertyFunction('concentration', inputs, outputs, function, expression)
-        
+
     def setTilecolorFunction(self, inputs=[], outputs=[], function=None, expression=None):
         self.setPropertyFunction('tilecolor', inputs, outputs, function, expression)
-        
+
     def setTextcolorFunction(self, inputs=[], outputs=[], function=None, expression=None):
         self.setPropertyFunction('textcolor', inputs, outputs, function, expression)
-        
+
     def removePropertyFunction(self, name):
         del self.propertyFunctions[name]
-    
+
     def numInputSides(self):
         if not self.inputJoins:
             return 0
         sides = set(join.neighborhood.direction for join in self.inputJoins)
         return len(sides)
-    
+
     def numOutputSides(self):
         if not self.outputJoins:
             return 0
         sides = set(join.neighborhood.direction for join in self.outputJoins)
         return len(sides)
-    
+
 
 def ensureIsSequence(obj):
     """If"""
@@ -1658,9 +1655,9 @@ def ensureIsSequence(obj):
         return (obj,)
 
 class Neighborhood:
-    
+
     """They must all share the same MultisignalType.
-        
+
     JP - Also Includes all TileTemplates which share this multisignal type"""
     def __init__(self, strength, direction):
         self.strength = strength
@@ -1668,7 +1665,7 @@ class Neighborhood:
         self.glueAnnotation = None
         self.multisignalType = None
         self.joins = []
-        
+
     def clone(self):
         #do joins here?
         '''joinTemp = list(self.joins)
@@ -1685,13 +1682,13 @@ class Neighborhood:
         newNeighborhood.multisignalType = newMultisignalType
         ##newNeighborhood.joins = newJoins
         return newNeighborhood
-        
-        
-        
+
+
+
     def addJoin(self, join):
         self.joins.append(join)
         self._update()
-    
+
     def addJoins(self, joins):
         self.joins.extend(joins)
         self._update()
@@ -1722,7 +1719,7 @@ class Neighborhood:
         for join in ret.joins:
             join.neighborhood = ret
         return ret
-        
+
 
 
 class ChooserSet:
@@ -1731,9 +1728,9 @@ class ChooserSet:
     # set of tile templates; disjoint union of all chooser sets should be set of all tile templates in tile set template
     # needs chooser function in addition to tile templates if there are more than 1
     # chooser only needs to work for overlapping input signal values; library should make correct choice otherwise
-    
+
     # inputMultisignalType() (nameUnion over input sides of the valueUnion over tile templates)
-    
+
     def __init__(self, tileSetTemplate, tileTemplate):
         self.tileSetTemplate = tileSetTemplate
         self.tileTemplate = tileTemplate # XXX: we conjecture this not needed, but maybe it is
@@ -1742,12 +1739,12 @@ class ChooserSet:
         self.neighborhoods = tileTemplate.inputNeighborhoods()
         self.inputs = None
         self.function = None
-    
+
     def clone(self, tile_templates):
         nameTTDict = {}
         for tile in tile_templates:
             nameTTDict[tile.name] = tile
-            
+
         newTileSetTemplate = self.tileSetTemplate
         newTileTemplate = nameTTDict.get(self.tileTemplate.name)
         newInputMst = self.inputMst.clone()
@@ -1755,7 +1752,7 @@ class ChooserSet:
         for tile in self.tileSet:
             newTile = nameTTDict.get(tile.name)
             newTileSet.append(newTile)
-        
+
         newNeighborhoods = {}
         #for value in newNeighborhoods.values():
             #value.clone()
@@ -1769,16 +1766,16 @@ class ChooserSet:
         cpChooserSet.tileSet = newTileSet
         cpChooserSet.neighborhoods = newNeighborhoods
         return cpChooserSet
-        
-        
-   
-        
-        
-        
+
+
+
+
+
+
 
     def inputMultisignalType(self):
         return self.inputMst
-    
+
 
     def chooseTileTemplates(self, inputMultisignal):
         matchSet = set()
@@ -1821,7 +1818,7 @@ class ChooserSet:
 
     def belongsInSet(self, tileTemplate):
         return self.neighborhoods == tileTemplate.inputNeighborhoods()
-    
+
     def isInSet(self, tileTemplate):
         return (tileTemplate in self.tileSet)
 
@@ -1832,11 +1829,11 @@ class ChooserSet:
 #TODO - make sure not to include auxiliary inputs
         self.addMultisignalValues(tileTemplate)
         self.tileSet.append(tileTemplate)
-    
+
     def addMultisignalValues(self, tileTemplate):
         self.inputMst = self.inputMst.valueUnion(tileTemplate.inputMultisignalType())
 
-    def removeTileTemplate(self, tileTemplate):      
+    def removeTileTemplate(self, tileTemplate):
         self.inputMst = None
         self.tileSet.remove(tileTemplate)
 
@@ -1845,8 +1842,8 @@ class ChooserSet:
                 self.inputMst = tt.inputMultisignalType()
             else:
                 self.inputMst.valueUnion(tt.inputMultisignalType())
-     
-               
+
+
 
 
 class Join:
@@ -1865,25 +1862,25 @@ class Join:
             toObj.inputJoins.append(self)
         if self not in fromObj.outputJoins:
             fromObj.outputJoins.append(self)
-            
+
     def clone(self, tile_templates):
         nameToTT = {}
         for tile in tile_templates:
             nameToTT[tile.name] = tile
-            
+
         newFromObj = nameToTT.get(self.fromObj.name)
         newToObj = nameToTT.get(self.toObj.name)
         newNeighborhood = self.neighborhood.clone()
         newMultisignalType = self.multisignalType.clone()
         newJoin = Join(newFromObj, newToObj, newNeighborhood, newMultisignalType)
-        
+
         return newJoin
 
 class TileSetTemplate(object):
     # needs list of chooser sets, list of joins, and list of neighborhoods, and list of hard-coded tiles
-    
+
     # join, unjoin, rejoin, add/remove chooser, add/remove tile template/tile, createTiles
-    
+
     def __init__(self):
         self.hardcodedTiles = []
         self.neighborhood_list = []
@@ -1900,27 +1897,27 @@ class TileSetTemplate(object):
         self.tileTempToPortDict = {}
         self.tileTempToPortDictReverse = {}
         self.toDict = {}
-        
-        
-    
+
+
+
     def errors(self):
         errors = []
-        
+
 #        for tt in self.tileSetTemplates():
 #            errors += tt.getStrengthErrors()
-#        
+#
 #        try:
 #            self.createTilesAndBuildErrors()
 #        except ErrorListError as errorListError:
 #            errors += errorList.errors()
-            
+
         return errors
-    
+
 #    def createTilesAndBuildErrors(self):
 #        errors = self.errors()
 #        if len(errors) > 0:
 #            raise errors[0]
-#        
+#
 #        for chooserSet in self.chooserSets:
 #            errors += chooserSet.getMissingChooserErrors()
 #            for inputMultisignal in chooserSet.inputMultisignalType():
@@ -1930,19 +1927,19 @@ class TileSetTemplate(object):
 #        #     call chooser for cs to find list [tt1,tt2,...,ttK] of tile templates to generate a tile from
 #        #     for each tile template tt in [tt1,tt2,...,ttK]
 #        #       generate tile from tt on input ims
-    
+
     def addTile(self, tile):
         """Add tile to this TileSetTemplate so it will be enumerated with the
         generated tiles and the tiles that were joined to a TileTemplate.
-        
-        This only needs to be called if the tile is never joined to a 
+
+        This only needs to be called if the tile is never joined to a
         TileTemplate, simply as a way to alert the TileSetTemplate of its
         existence."""
         self.hardcodedTiles.append(tile)
-    
+
     def ensureIsTemplate(self, tile):
         """Wrap tile in a TileTemplate if tile is not a TileTemplate already.
-        
+
         This TileTemplate has no transitions or property functions, so it will do
         nothing interesting when TileTemplate.createTilesFromInputMultisignal is
         called, but will create a tile with the same properties as this one."""
@@ -1967,7 +1964,7 @@ class TileSetTemplate(object):
 
     def createTiles(self):
         """Return list of all tiles this TileSetTemplate generates.
-        
+
         If unresolved errors exist, the first such error encountered is raised."""
         errors = self.errors()
         if errors:
@@ -1982,17 +1979,17 @@ class TileSetTemplate(object):
                     tiles.extend(tilesFromTileTemplate)
                     if tileTemplate.numInputSides() == 0:
                         tileTemplatesWithoutInputs.add(tileTemplate)
-        
-        # Handle tiles with no inputs, which are typically Tiles wrapped in TileTemplates        
+
+        # Handle tiles with no inputs, which are typically Tiles wrapped in TileTemplates
         emptyMs = Multisignal(())
-        
+
 #         for tileTemplateWithoutInput in self.tilesWithoutInputs:
         for tileTemplateWithoutInput in tileTemplatesWithoutInputs:
             tilesFromTileTemplate = tileTemplateWithoutInput.createTilesFromInputMultisignal(emptyMs)
             tiles.extend(tilesFromTileTemplate)
 
         return [tile for tile in tiles if tile is not None]
-    
+
 
     def removeJoin(self, strength, direction, fromTileTemplate, toTileTemplate):
         #  Find the join which is to be removed
@@ -2005,14 +2002,14 @@ class TileSetTemplate(object):
                         break
             if joinToRemove is not None:
                 break
-        
+
         if joinToRemove is not None:
             #  Remove the join from the list of joins associated with the to and from tile templates
             if joinToRemove in joinToRemove.to_port.inputJoins:
                 joinToRemove.to_port.inputJoins.remove(joinToRemove)
             if joinToRemove in joinToRemove.from_port.outputJoins:
                 joinToRemove.from_port.outputJoins.remove(joinToRemove)
-            
+
             #  Get rid of the neighborhood that this join was in and build a new one(s)
             nbrhdToRemove = joinToRemove.neighborhood
             if nbrhdToRemove in self.neighborhood_list:
@@ -2041,7 +2038,7 @@ class TileSetTemplate(object):
             if not bInSet:
                 cs = ChooserSet(self, joinToRemove.to_port)
                 self.chooserSets.append(cs)
-                
+
             # In case the tile which was receiving the join no longer has an input, make sure it isn't lost
 #             if joinToRemove.to_port.numInputSides() == 0:
 #                 self.tilesWithoutInputs.append(joinToRemove.to_port)
@@ -2049,7 +2046,7 @@ class TileSetTemplate(object):
 
     def _getNeighborhoodForJoin(self, strength, direction, fromTileTemplate, toTileTemplate):
         """Find/create neigbhorhood
-           Because we could be joining Tiles or TileTemplates, 
+           Because we could be joining Tiles or TileTemplates,
              loop over all neighborhoods to look for a fit"""
         inNbrhd = None
         outNbrhd = None
@@ -2076,7 +2073,7 @@ class TileSetTemplate(object):
             self.neighborhood_list.remove(outNbrhd)
         elif inNbrhd is not None:
             # Either there is only an inNbrhd to join to, or inNbrhd and outNbrhd
-            # are the same.  Either way, enter inNbrhd as long as the multiSignalType names match            
+            # are the same.  Either way, enter inNbrhd as long as the multiSignalType names match
             myNbrhd = inNbrhd
         elif outNbrhd is not None:
             # There is only an outNbrhd, so enter it as long as the multiSignalType names match
@@ -2087,9 +2084,9 @@ class TileSetTemplate(object):
             self.neighborhood_list.append(myNbrhd)
 
         return myNbrhd
-        
+
     #TODO: make a better error to show that an object has not been added to a module
-    def join(self, strength, direction, fromTileTemplate, toTileTemplate, 
+    def join(self, strength, direction, fromTileTemplate, toTileTemplate,
              multisignalType=None, **kwargs):
         # combine multisignalType with signals specified in kwargs
         if multisignalType is None:
@@ -2097,22 +2094,22 @@ class TileSetTemplate(object):
         else:
             multisignalType = copy.copy(multisignalType)
             multisignalType.addSignalTypes(**kwargs)
-            
+
         from_is_port = fromTileTemplate is Port
         to_is_port = toTileTemplate is Port
-            
-        #TODO: check to ensure signal names in multisignalType do not occur in 
+
+        #TODO: check to ensure signal names in multisignalType do not occur in
         # from_port or to_port already in a different direction
         fromTileTemplateName = fromTileTemplate.name
-       
-            
+
+
         # wrap Tile in TileTemplate if necessary
         if not from_is_port:
             fromTileTemplate = self.ensureIsTemplate(fromTileTemplate)
         if not to_is_port:
             toTileTemplate = self.ensureIsTemplate(toTileTemplate)
-        
-        #check to ensure signal names in multisignalType do not occur in 
+
+        #check to ensure signal names in multisignalType do not occur in
         # from_port or to_port already in a different direction
         if fromTileTemplateName not in self.frLst:
             self.frLst.append(fromTileTemplateName)
@@ -2120,26 +2117,26 @@ class TileSetTemplate(object):
             self.frDict[fromTileTemplateName] = msDict
         else:
             multiSigDict = self.frDict.get(fromTileTemplateName)
-            
+
             if multisignalType in multiSigDict:
                 oldDirec = multiSigDict.get(multisignalType)
                 if(oldDirec != direction):
                     raise DuplicateOutputSignalValues(multisignalType, oldDirec, direction,fromTileTemplateName)
-                    
+
             else:
                 multiSigDict[multisignalType] = direction
-        
-       
-    
-        
-        
+
+
+
+
+
         #TODO: check if either TileTemplate is new; if so, ensure name not already in use
-        
+
         # Make sure there isn't already a join in this direction between these two tiles
         for neighborhood in self.neighborhood_list:
             for join in neighborhood.joins:
-                if (join.neighborhood.direction == direction and 
-                    join.fromObj == fromTileTemplate and 
+                if (join.neighborhood.direction == direction and
+                    join.fromObj == fromTileTemplate and
                     join.toObj == toTileTemplate):
                     raise ValueError('{0} and {1} are already joined in direction {2}'.format(
                         fromTileTemplate.name,toTileTemplate.name,direction))
@@ -2183,11 +2180,11 @@ class TileSetTemplate(object):
 #         if from_port.numInputSides() == 0:
 #             if from_port not in self.tilesWithoutInputs:
 #                 self.tilesWithoutInputs.append(from_port)
-#         
+#
 #         # If to_port was in the list of tile templates without inputs, remove it
 #         if to_port in self.tilesWithoutInputs:
 #             self.tilesWithoutInputs.remove(to_port)
-        
+
         return newJoin
     #eventually this function should be integrated within another function, but for the time being simply focusin on functionality
     ##Do with input as well if this is correct
@@ -2202,10 +2199,10 @@ class TileSetTemplate(object):
         for port in port_unvisited_set:
             if port not in graph:
                 graph[port] = []
-        ##add check to ensure that tile temp univsited isnt size zero as well as unit test for this func 
+        ##add check to ensure that tile temp univsited isnt size zero as well as unit test for this func
         root = next(iter(tile_template_unvisited_set))
         visitedSet = set()
-        
+
         while root:
             #portsSet = set()
             queue = collections.deque([root])
@@ -2217,8 +2214,8 @@ class TileSetTemplate(object):
                         tile_template_unvisited_set.remove(objt)
                     else:
                         port_unvisited_set.remove(objt)
-                    for neighbor in graph[objt]: 
-                        if neighbor not in visitedSet: 
+                    for neighbor in graph[objt]:
+                        if neighbor not in visitedSet:
                             queue.append(neighbor)
             if tile_template_unvisited_set:
                 root = next(iter(tile_template_unvisited_set))
@@ -2229,7 +2226,7 @@ class TileSetTemplate(object):
 #                     portsSet.add(obj)
         if port_unvisited_set:
             raise portsNotConnectedtoTileTemplatesOutput(list(port_unvisited_set))
-        
+
         '''portsList = list(portsSet)
         if portsList == self.modulePorts:
             pass
@@ -2246,10 +2243,10 @@ class TileSetTemplate(object):
         for port in port_unvisited_set:
             if port not in graph:
                 graph[port] = []
-        ##add check to ensure that tile temp univsited isnt size zero as well as unit test for this func 
+        ##add check to ensure that tile temp univsited isnt size zero as well as unit test for this func
         root = next(iter(tile_template_unvisited_set))
         visitedSet = set()
-        
+
         while root:
             #portsSet = set()
             queue = collections.deque([root])
@@ -2261,8 +2258,8 @@ class TileSetTemplate(object):
                         tile_template_unvisited_set.remove(objt)
                     else:
                         port_unvisited_set.remove(objt)
-                    for neighbor in graph[objt]: 
-                        if neighbor not in visitedSet: 
+                    for neighbor in graph[objt]:
+                        if neighbor not in visitedSet:
                             queue.append(neighbor)
             if tile_template_unvisited_set:
                 root = next(iter(tile_template_unvisited_set))
@@ -2279,9 +2276,9 @@ class TileSetTemplate(object):
         else:
             #make an error class for this
             raise ValueError'''
-#there must always be a root module created whose name is root module  
-#try to implement tiles within Modules at one point in time?    
-#feature to implement: create function that copies module into a new one and can rotate it, one that can flip it, and one that can copy it 
+#there must always be a root module created whose name is root module
+#try to implement tiles within Modules at one point in time?
+#feature to implement: create function that copies module into a new one and can rotate it, one that can flip it, and one that can copy it
 class Module(object):
     def __init__(self, name):
         self.tile_templates = []
@@ -2315,12 +2312,12 @@ class Module(object):
         else:
             assert False
         child.parent = self
-        
+
     def errors(self):
         errors = []
-            
+
         return errors
-        
+
     def remove(self,child):
         if child not in self.tile_templates or self.submodules:
             raise ValueError("child: {} must have been added to the module in order to be removed  ".format(self.child))
@@ -2333,14 +2330,14 @@ class Module(object):
             raise ValueError("added object must be a port but is {}".format(type(port)))
         self.ports.append(port)
         port.outputDirection = direction
-        
+
         if type(port) is initiatorPort:
             if port.toModule == True:
-                    
+
                 self.total_strength_initiator_ports = self.total_strength_initiator_ports + port.strength
                 if self.total_strength_initiator_ports > 2:
                     raise tooManyInitatiorPortsError(self.name)
-        
+
         port.inputDirection = oppositeDirection(direction)
         port.parent = self
 
@@ -2352,7 +2349,7 @@ class Module(object):
         self.hardcodedTiles.append(tile)
     def ensureIsTemplate(self, tile):
         """Wrap tile in a TileTemplate if tile is not a TileTemplate already.
-        
+
         This TileTemplate has no transitions or property functions, so it will do
         nothing interesting when TileTemplate.createTilesFromInputMultisignal is
         called, but will create a tile with the same properties as this one."""
@@ -2376,14 +2373,14 @@ class Module(object):
                         break
             if joinToRemove is not None:
                 break
-        
+
         if joinToRemove is not None:
             #  Remove the join from the list of joins associated with the to and from tile templates
             if joinToRemove in joinToRemove.toObj.inputJoins:
                 joinToRemove.toObj.inputJoins.remove(joinToRemove)
             if joinToRemove in joinToRemove.fromObj.outputJoins:
                 joinToRemove.fromObj.outputJoins.remove(joinToRemove)
-            
+
             #  Get rid of the neighborhood that this join was in and build a new one(s)
             nbrhdToRemove = joinToRemove.neighborhood
             if nbrhdToRemove in self.neighborhood_list:
@@ -2419,7 +2416,7 @@ class Module(object):
     #fix for both ports and joins
     def _getNeighborhoodForJoin(self, strength, direction, fromObj, toObj):
         """Find/create neigbhorhood
-           Because we could be joining Tiles or TileTemplates, 
+           Because we could be joining Tiles or TileTemplates,
              loop over all neighborhoods to look for a fit"""
         inNbrhd = None
         outNbrhd = None
@@ -2446,7 +2443,7 @@ class Module(object):
             self.neighborhood_list.remove(outNbrhd)
         elif inNbrhd is not None:
             # Either there is only an inNbrhd to join to, or inNbrhd and outNbrhd
-            # are the same.  Either way, enter inNbrhd as long as the multiSignalType names match            
+            # are the same.  Either way, enter inNbrhd as long as the multiSignalType names match
             myNbrhd = inNbrhd
         elif outNbrhd is not None:
             # There is only an outNbrhd, so enter it as long as the multiSignalType names match
@@ -2457,7 +2454,7 @@ class Module(object):
             self.neighborhood_list.append(myNbrhd)
 
         return myNbrhd
-   
+
 
     # generate neighborhod then go through the joins of that neighborhodd and create an input object to output object set then see for any set that has size greater than one that it does not contain ports
     def join(self, strength, direction, fromObj, toObj, tileSetTemplate,
@@ -2477,12 +2474,12 @@ class Module(object):
             else:
                 raise PortFromObjNotConformingtoModuleConfigurationError(fromObj,toObj)
         if type(fromObj) is Port and type(toObj) is Port:
-            
+
             if (fromObj.parent).parent.name == (toObj.parent).parent.name or fromObj.parent.name == (toObj.parent).parent.name or (fromObj.parent).parent.name == toObj.parent.name:
                 pass
             else:
                 raise PortFromObjNotConformingtoModuleConfigurationError(fromObj,toObj)
-        
+
         if direction in fromObj.outputObjectDict:
              fromObj.outputObjectDict[direction].append(toObj)
         else:
@@ -2493,7 +2490,7 @@ class Module(object):
              toObj.inputObjectDict[oppositeDirection(direction)] = [fromObj]
         if type(tileSetTemplate) not in [TileSetTemplate]:
             raise ValueError("tileSetTemplate must be a TileSetTemplate but is {}".format(type(tileSetTemplate)))
-        
+
         if type(fromObj) in [TileTemplate,Tile]:
             if fromObj not in tileSetTemplate.moduleTiles:
                 (tileSetTemplate.moduleTiles).append(fromObj)
@@ -2514,14 +2511,14 @@ class Module(object):
             tileSetTemplate.inputObjectsDict[toObj] = [fromObj]
         else:
             tileSetTemplate.inputObjectsDict[toObj].append(fromObj)
-        
+
         '''if fromObj not in tileSetTemplate.hardcodedTiles:
             tileSetTemplate.hardcodedTiles.append(fromObj)
         if toObj not in tileSetTemplate.hardcodedTiles:
             tileSetTemplate.hardcodedTiles.append(toObj)'''
-            
+
         ##populate a dict to see how from objects go to toObjects
-        
+
         fromObjTup = (fromObj, direction, strength)
         toObjTup = (toObj, direction, strength)
 
@@ -2529,69 +2526,69 @@ class Module(object):
             tileSetTemplate.tileTempToPortDict[fromObjTup] = [toObjTup]
         else:
             tileSetTemplate.tileTempToPortDict[fromObjTup].append(toObjTup)
-        
-        #initializing variables needed to transfer data in this dict to the copy module    
+
+        #initializing variables needed to transfer data in this dict to the copy module
         fromObjNameForCopyDict = fromObj.name
         objDictForCopy = {}
         fromTupForCopy = (direction, strength)
         toTupForCopy = (toObj.name, direction, strength)
         objDictForCopy[fromTupForCopy] = toTupForCopy
-        
-        
+
+
         if self.tileTempDictForCopy.get(fromObjNameForCopyDict) == None:
             self.tileTempDictForCopy[fromObjNameForCopyDict] = [objDictForCopy]
         else:
             self.tileTempDictForCopy[fromObjNameForCopyDict].append(objDictForCopy)
-             
-             
+
+
         #fromObjTupRev = (fromObj, oppositeDirection(direction), strength)
         #toObjTupRev = (toObj, oppositeDirection(direction), strength) should work with regular direction if it doesnt use this
         fromObjTupRev = (fromObj, direction, strength)
         toObjTupRev = (toObj, direction, strength)
-         
-        
+
+
         if tileSetTemplate.tileTempToPortDictReverse.get(toObjTupRev) == None:
             tileSetTemplate.tileTempToPortDictReverse[toObjTupRev] = [fromObjTupRev]
         else:
             tileSetTemplate.tileTempToPortDictReverse[toObjTupRev].append(fromObjTupRev)
             #or (tileSetTemplate.tileTempToPortDictReverse.get(toObjTupRev)).append(fromObjTupRev)
-        
+
         toObjNameForCopyRevDict = toObj.name
         objDictRevForCopy = {}
         toTupRevForCopy = (direction, strength)
         fromTupRevForCopy = (fromObj.name, direction, strength)
         objDictRevForCopy[toTupRevForCopy] = fromTupRevForCopy
-        
-        
+
+
         if self.tileTempDictReverseForCopy.get(toObjNameForCopyRevDict) == None:
             self.tileTempDictReverseForCopy[toObjNameForCopyRevDict] = [objDictRevForCopy]
         else:
             self.tileTempDictReverseForCopy[toObjNameForCopyRevDict].append(objDictRevForCopy)
-                
-                
-            
+
+
+
         # combine multisignalType with signals specified in kwargs
         if multisignalType is None:
             multisignalType = MultisignalType(**kwargs)
         else:
             multisignalType = copy.copy(multisignalType)
             multisignalType.addSignalTypes(**kwargs)
-            
+
         from_is_port = fromObj in [Port,initiatorPort]
         to_is_port = toObj in [Port,initiatorPort]
-            
-        #TODO: check to ensure signal names in multisignalType do not occur in 
+
+        #TODO: check to ensure signal names in multisignalType do not occur in
         # from_port or to_port already in a different direction
         fromObjName = fromObj.name
-       
-            
+
+
         # wrap Tile in TileTemplate if necessary
         if not from_is_port:
             fromTileTemplate = self.ensureIsTemplate(fromObj)
         if not to_is_port:
             toTileTemplate = self.ensureIsTemplate(toObj)
-        
-        #check to ensure signal names in multisignalType do not occur in 
+
+        #check to ensure signal names in multisignalType do not occur in
         # from_port or to_port already in a different direction
         if fromObjName not in self.frLst:
             self.frLst.append(fromObjName)
@@ -2599,31 +2596,31 @@ class Module(object):
             self.frDict[fromObjName] = msDict
         else:
             multiSigDict = self.frDict.get(fromObjName)
-            
+
             if multisignalType in multiSigDict:
                 oldDirec = multiSigDict.get(multisignalType)
                 if(oldDirec != direction):
                     raise DuplicateOutputSignalValues(multisignalType, oldDirec, direction,fromObjName)
-                    
+
             else:
                 multiSigDict[multisignalType] = direction
-                
-        
+
+
         if tileSetTemplate.toDict.get(fromObj) == None:
             tileSetTemplate.toDict[fromObj] = [toObj]
         else:
             tileSetTemplate.toDict[fromObj].append(toObj)
-       
-    
-        
-        
+
+
+
+
         #TODO: check if either TileTemplate is new; if so, ensure name not already in use
-        
+
         # Make sure there isn't already a join in this direction between these two tiles
         for neighborhood in self.neighborhood_list:
             for join in neighborhood.joins:
-                if (join.neighborhood.direction == direction and 
-                    join.fromObj == fromObj and 
+                if (join.neighborhood.direction == direction and
+                    join.fromObj == fromObj and
                     join.toObj == toObj):
                     raise ValueError('{0} and {1} are already joined in direction {2}'.format(
                         fromTileTemplate.name,toTileTemplate.name,direction))
@@ -2642,29 +2639,29 @@ class Module(object):
 
         newJoin = Join(fromObj, toObj, myNbrhd, multisignalType)
         myNbrhd.addJoin(newJoin)
-        
+
         #ensures ports follow many to single rule
 
-        
+
         fromObjJoinSet = { join.fromObj for join in myNbrhd.joins }
         toObjJoinSet = { join.toObj for join in myNbrhd.joins }
-        
+
         if len(fromObjJoinSet) > 1:
             if any(type(obj) == Port for obj in fromObjJoinSet):
                 raise fromObjectsPortError(myNbrhd)
-        
+
         if len(toObjJoinSet) > 1:
             if any(type(obj) == Port for obj in toObjJoinSet):
                 raise toObjectsPortError(myNbrhd)
-        
-         
-         
+
+
+
         #creates a chooser set
         '''if type(toObj) in [initiatorPort, Port]:
             if type(fromObj) is TileTemplate:
                 cs = ChooserSet(self, fromObj)
                 self.chooserSets.append(cs)'''
-                      
+
         toTileTemplates = {join.toObj for join in myNbrhd.joins if type(join.toObj) is TileTemplate}
         for toTileTemplate in toTileTemplates:
             bInSet = False
@@ -2675,7 +2672,7 @@ class Module(object):
                     else:
                         chooserSet.addMultisignalValues(toTileTemplate)
                     bInSet = True
-                            
+
                     break
             if not bInSet:
                 cs = ChooserSet(self, toTileTemplate)
@@ -2687,59 +2684,59 @@ class Module(object):
                         chooserSet.removeTileTemplate(toTileTemplate)
                         if len(chooserSet.tileSet) == 0:
                             self.chooserSets.remove(chooserSet)
-            
-            
-        
+
+
+
 
         self.joins.append(newJoin)
-      
-     
+
+
         return newJoin
-         
+
     def copyModule(self,tileSetTemplate):
-        
-        #cloning tile templates 
+
+        #cloning tile templates
         newTTList = list(self.tile_templates)
         newTileTemplates = []
         for tile in newTTList:
             newTile = tile.clone()
             newTileTemplates.append(newTile)
-    
-            
-        #recursively copy modules contained wihtin 
+
+
+        #recursively copy modules contained wihtin
         newSubMods = list(self.submodules)
         newSubmodules = []
         for module in newSubMods:
             newModules = module.copyModule(tileSetTemplate)
             newSubmodules.append(newModules)
-        
+
         #set parent to none, decided at user descrision
         newParent = None #can be added to any module and that module will become its parent
-        
+
         #cloning ports
         newPortList = list(self.ports)
         newPorts = []
         for port in newPortList:
             newPort = port.clone()
             newPorts.append(newPort)
-            
-        #name blank, can be renamed afterwards    
-        newName = None #option to rename 
-        
-        
+
+        #name blank, can be renamed afterwards
+        newName = None #option to rename
+
+
         #tiles cloned
         newHardcodedTiles = []
         for tile in self.hardcodedTiles:
             newTile = tile.clone()
             newHardcodedTiles.append(newTile)
-            
-        #clone chooser sets 
+
+        #clone chooser sets
         newChooserSets = []
         for chooserSet in self.chooserSets:
             newChooserSetCp = chooserSet.clone(newTileTemplates)
             newChooserSets.append(newChooserSetCp)
-        
-        
+
+
         newTileTempDictForCopy = dict(self.tileTempDictForCopy)
         newTileTempDictReverseForCopy = dict(self.tileTempDictReverseForCopy)
 
@@ -2758,7 +2755,7 @@ class Module(object):
         newFrLst = list(self.frLst)
         newFrDict = dict(self.frDict)
         newJoins = []
-        for join in self.joins:  
+        for join in self.joins:
             newJoin = join.clone(newTileTemplates)
             newJoins.append(newJoin)
         #cant do it explicitly with the objects bc obj are diff since one contains joins one doesnst, first put names of the tile templates and ports into a list
@@ -2800,7 +2797,7 @@ class Module(object):
             if join.neighborhood.glueAnnotation in nbrhdGlueAnnotations:
                 nbrhd = glueAnnotationToNbrhdDict.get(join.neighborhood.glueAnnotation)
                 nbrhd.joins.append(join)
-            
+
         newModule = Module(newName)
         newModule.tile_templates = newTileTemplates
         newModule.submodules = newSubmodules
@@ -2817,14 +2814,12 @@ class Module(object):
         newModule.joins = newJoins
         newModule.tileTempDictForCopy = newTileTempDictForCopy
         newModule.tileTempDictReverseForCopy = newTileTempDictReverseForCopy
-        #for chooserSet in newModule.chooserSets:
-            #for tile in chooserSet.tileSet:
-                #tile.parent = newModule
-                
+
+
         nameToTTDict = {}
         for tileTemp in newModule.tile_templates:
             nameToTTDict[tileTemp.name] = tileTemp
-            
+
         for tileTemp in newModule.tile_templates:
             tileTemp.parent = newModule
         for port in newModule.ports:
@@ -2832,25 +2827,14 @@ class Module(object):
         for join in newModule.joins:
             join.fromObj.parent = newModule
             join.toObj.parent = newModule
-        
-      
-        #populate joins list in neighborhood - may have already done it, check
-        #for chooserSet in newModule.chooserSets:
-            #chooserSet.tileTemplate.parent = newModule
-            #for tile in chooserSet.tileSet: 
-                #tile.parent = newModule
-            #if chooserSet.tileTemplate.name in nameToTTDict.keys():
-                #chooserSet.tileTemplate = nameToTTDict.get(chooserSet.tileTemplate.name)
-            #fix this to recognize these tiles as same in tile_templates, once done everyhting should be good to go
-            #for tile in chooserSet.tileSet: 
-                #if tile.name in nameToTTDict.keys():
-                    #tile = nameToTTDict.get(tile.name)
-                    
-        
+
+
+
+
         #add all tile template to the tiletemptoportdict and tiletemptoportdictreverse dictionaries
-       
-            
-       
+
+
+
         for tileTemp in newModule.tile_templates:
             ttName = tileTemp.name
             if ttName in newModule.tileTempDictForCopy.keys():
@@ -2862,75 +2846,75 @@ class Module(object):
                         ttFromTup = tileTemp
                         toTup = ttDict.get(key)
                         toTTName = toTup[0]
-                        if toTTName in nameToTTDict: 
+                        if toTTName in nameToTTDict:
                             toTT = nameToTTDict.get(toTTName)
                             toTTDirection = toTup[1]
                             toTTStrength = toTup[2]
                             fromObjTup = (ttFromTup, newFromTupDirection, newFromTupStrength)
                             toObjTup = (toTT,toTTDirection,toTTStrength)
-                        
+
                             if tileSetTemplate.tileTempToPortDict.get(fromObjTup) == None:
                                 tileSetTemplate.tileTempToPortDict[fromObjTup] = [toObjTup]
-                                
+
                             else:
                                 tileSetTemplate.tileTempToPortDict[fromObjTup].append(toObjTup)
-                            
-        
+
+
         for tileTemp in newModule.tile_templates:
             ttName = tileTemp.name
             if ttName in newModule.tileTempDictReverseForCopy.keys():
                 tileTempDictList = newModule.tileTempDictReverseForCopy.get(ttName)
-                
+
                 for ttDict in tileTempDictList:
                     for key in ttDict.keys():
                         newToTupDirection = key[0]
                         newToTupStrength = key[1]
                         ttToTup = tileTemp
                         fromTup = ttDict.get(key)
-                        
+
                         fromTTName = fromTup[0]
-                       
-                        if fromTTName in nameToTTDict: 
+
+                        if fromTTName in nameToTTDict:
                             fromTT = nameToTTDict.get(fromTTName)
-                            
+
                             fromTTDirection = fromTup[1]
                             fromTTStrength = fromTup[2]
                             toObjTupRev = (ttToTup, newToTupDirection, newToTupStrength)
                             fromObjTupRev = (fromTT,fromTTDirection,fromTTStrength)
-                        
+
                             if tileSetTemplate.tileTempToPortDictReverse.get(toObjTupRev) == None:
                                 tileSetTemplate.tileTempToPortDictReverse[toObjTupRev] = [fromObjTupRev]
-                                
+
                             else:
                                 tileSetTemplate.tileTempToPortDictReverse[toObjTupRev].append(fromObjTupRev)
-                        
-                
-            
-            
-            
-        #do the same for ports eventually 
-        return newModule 
-       
+
+
+
+
+
+        #do the same for ports eventually
+        return newModule
+
     def renameModule(self, newName):
         self.name = newName
-            
+
     #takes an existing module and rotates it, so must copy first then rotate
     def rotateClockwise90(self, tileSetTemplate):
         for nbrhd in self.neighborhood_list:
             newDirection = rotateDirectionClockwise90(nbrhd.direction)
             nbrhd.direction = newDirection
-            
-        
+
+
         for join in self.joins:
             newDirection = rotateDirectionClockwise90(join.neighborhood.direction)
             join.neighborhood.direction = newDirection
-        
+
         nameToTTDict = {}
         for tileTemp in self.tile_templates:
             nameToTTDict[tileTemp.name] = tileTemp
-        
-  
-            
+
+
+
         for tileTemp in self.tile_templates:
             ttName = tileTemp.name
             if ttName in self.tileTempDictForCopy.keys():
@@ -2940,7 +2924,7 @@ class Module(object):
                         newFromTupDirection = key[0]
                         newFromTupStrength = key[1]
                         ttFromTup = tileTemp
-                        fromObjTup = (ttFromTup, newFromTupDirection, newFromTupStrength) 
+                        fromObjTup = (ttFromTup, newFromTupDirection, newFromTupStrength)
                         tileSetTemplate.tileTempToPortDict.pop(fromObjTup, None)
 
         for tileTemp in self.tile_templates:
@@ -2954,7 +2938,7 @@ class Module(object):
                         ttFromTup = tileTemp
                         toTup = ttDict.get(key)
                         toTTName = toTup[0]
-                        if toTTName in nameToTTDict: 
+                        if toTTName in nameToTTDict:
                             toTT = nameToTTDict.get(toTTName)
                             toTTDirection = toTup[1]
                             toTTStrength = toTup[2]
@@ -2962,19 +2946,19 @@ class Module(object):
                             rotatedToDirection = rotateDirectionClockwise90(toTTDirection)
                             fromObjTup = (ttFromTup, rotatedFromDirection, newFromTupStrength)
                             toObjTup = (toTT,rotatedToDirection,toTTStrength)
-                        
+
                             if tileSetTemplate.tileTempToPortDict.get(fromObjTup) == None:
                                 tileSetTemplate.tileTempToPortDict[fromObjTup] = [toObjTup]
-                                
+
                             else:
                                 tileSetTemplate.tileTempToPortDict[fromObjTup].append(toObjTup)
-        
+
 
         for tileTemp in self.tile_templates:
             ttName = tileTemp.name
             if ttName in self.tileTempDictReverseForCopy.keys():
                 tileTempDictList = self.tileTempDictReverseForCopy.get(ttName)
-                
+
                 for ttDict in tileTempDictList:
                     for key in ttDict.keys():
                         newToTupDirection = key[0]
@@ -2982,55 +2966,55 @@ class Module(object):
                         ttToTup = tileTemp
                         toObjTupRev = (ttToTup, newToTupDirection, newToTupStrength)
                         tileSetTemplate.tileTempToPortDictReverse.pop(toObjTupRev, None)
-        
+
         for tileTemp in self.tile_templates:
             ttName = tileTemp.name
             if ttName in self.tileTempDictReverseForCopy.keys():
                 tileTempDictList = self.tileTempDictReverseForCopy.get(ttName)
-                
+
                 for ttDict in tileTempDictList:
                     for key in ttDict.keys():
                         newToTupDirection = key[0]
                         newToTupStrength = key[1]
                         ttToTup = tileTemp
                         fromTup = ttDict.get(key)
-                        
+
                         fromTTName = fromTup[0]
-                       
-                        if fromTTName in nameToTTDict: 
+
+                        if fromTTName in nameToTTDict:
                             fromTT = nameToTTDict.get(fromTTName)
-                            
+
                             fromTTDirection = fromTup[1]
                             fromTTStrength = fromTup[2]
                             newToTupDirectionRotated = rotateDirectionClockwise90(newToTupDirection)
                             fromTTDirectionRotated = rotateDirectionClockwise90(fromTTDirection)
                             toObjTupRev = (ttToTup, newToTupDirectionRotated, newToTupStrength)
                             fromObjTupRev = (fromTT,fromTTDirectionRotated,fromTTStrength)
-                        
+
                             if tileSetTemplate.tileTempToPortDictReverse.get(toObjTupRev) == None:
                                 tileSetTemplate.tileTempToPortDictReverse[toObjTupRev] = [fromObjTupRev]
-                                
+
                             else:
                                 tileSetTemplate.tileTempToPortDictReverse[toObjTupRev].append(fromObjTupRev)
-        
-    
+
+
     #should just rotate the join's direction to the left
     def rotateCounterclockwise90(self, tileSetTemplate):
         for nbrhd in self.neighborhood_list:
             newDirection = rotateDirectionCounterclockwise90(nbrhd.direction)
             nbrhd.direction = newDirection
-            
-        
+
+
         for join in self.joins:
             newDirection = rotateDirectionCounterclockwise90(join.neighborhood.direction)
             join.neighborhood.direction = newDirection
-        
+
         nameToTTDict = {}
         for tileTemp in self.tile_templates:
             nameToTTDict[tileTemp.name] = tileTemp
-        
-  
-            
+
+
+
         for tileTemp in self.tile_templates:
             ttName = tileTemp.name
             if ttName in self.tileTempDictForCopy.keys():
@@ -3040,7 +3024,7 @@ class Module(object):
                         newFromTupDirection = key[0]
                         newFromTupStrength = key[1]
                         ttFromTup = tileTemp
-                        fromObjTup = (ttFromTup, newFromTupDirection, newFromTupStrength) 
+                        fromObjTup = (ttFromTup, newFromTupDirection, newFromTupStrength)
                         tileSetTemplate.tileTempToPortDict.pop(fromObjTup, None)
 
         for tileTemp in self.tile_templates:
@@ -3054,7 +3038,7 @@ class Module(object):
                         ttFromTup = tileTemp
                         toTup = ttDict.get(key)
                         toTTName = toTup[0]
-                        if toTTName in nameToTTDict: 
+                        if toTTName in nameToTTDict:
                             toTT = nameToTTDict.get(toTTName)
                             toTTDirection = toTup[1]
                             toTTStrength = toTup[2]
@@ -3062,19 +3046,19 @@ class Module(object):
                             rotatedToDirection = rotateDirectionCounterclockwise90(toTTDirection)
                             fromObjTup = (ttFromTup, rotatedFromDirection, newFromTupStrength)
                             toObjTup = (toTT,rotatedToDirection,toTTStrength)
-                        
+
                             if tileSetTemplate.tileTempToPortDict.get(fromObjTup) == None:
                                 tileSetTemplate.tileTempToPortDict[fromObjTup] = [toObjTup]
-                                
+
                             else:
                                 tileSetTemplate.tileTempToPortDict[fromObjTup].append(toObjTup)
-        
+
 
         for tileTemp in self.tile_templates:
             ttName = tileTemp.name
             if ttName in self.tileTempDictReverseForCopy.keys():
                 tileTempDictList = self.tileTempDictReverseForCopy.get(ttName)
-                
+
                 for ttDict in tileTempDictList:
                     for key in ttDict.keys():
                         newToTupDirection = key[0]
@@ -3082,55 +3066,55 @@ class Module(object):
                         ttToTup = tileTemp
                         toObjTupRev = (ttToTup, newToTupDirection, newToTupStrength)
                         tileSetTemplate.tileTempToPortDictReverse.pop(toObjTupRev, None)
-        
+
         for tileTemp in self.tile_templates:
             ttName = tileTemp.name
             if ttName in self.tileTempDictReverseForCopy.keys():
                 tileTempDictList = self.tileTempDictReverseForCopy.get(ttName)
-                
+
                 for ttDict in tileTempDictList:
                     for key in ttDict.keys():
                         newToTupDirection = key[0]
                         newToTupStrength = key[1]
                         ttToTup = tileTemp
                         fromTup = ttDict.get(key)
-                        
+
                         fromTTName = fromTup[0]
-                       
-                        if fromTTName in nameToTTDict: 
+
+                        if fromTTName in nameToTTDict:
                             fromTT = nameToTTDict.get(fromTTName)
-                            
+
                             fromTTDirection = fromTup[1]
                             fromTTStrength = fromTup[2]
                             newToTupDirectionRotated = rotateDirectionCounterclockwise90(newToTupDirection)
                             fromTTDirectionRotated = rotateDirectionCounterclockwise90(fromTTDirection)
                             toObjTupRev = (ttToTup, newToTupDirectionRotated, newToTupStrength)
                             fromObjTupRev = (fromTT,fromTTDirectionRotated,fromTTStrength)
-                        
+
                             if tileSetTemplate.tileTempToPortDictReverse.get(toObjTupRev) == None:
                                 tileSetTemplate.tileTempToPortDictReverse[toObjTupRev] = [fromObjTupRev]
-                                
+
                             else:
                                 tileSetTemplate.tileTempToPortDictReverse[toObjTupRev].append(fromObjTupRev)
-        
+
 
     #use oppositedirectionfunctions so switch W,E
     def reflectModuleHorizontal(self, tileSetTemplate):
         for nbrhd in self.neighborhood_list:
             newDirection = oppositeDirectionHorizontal(nbrhd.direction)
             nbrhd.direction = newDirection
-            
-        
+
+
         for join in self.joins:
             newDirection = oppositeDirectionHorizontal(join.neighborhood.direction)
             join.neighborhood.direction = newDirection
-        
+
         nameToTTDict = {}
         for tileTemp in self.tile_templates:
             nameToTTDict[tileTemp.name] = tileTemp
-        
-  
-            
+
+
+
         for tileTemp in self.tile_templates:
             ttName = tileTemp.name
             if ttName in self.tileTempDictForCopy.keys():
@@ -3140,7 +3124,7 @@ class Module(object):
                         newFromTupDirection = key[0]
                         newFromTupStrength = key[1]
                         ttFromTup = tileTemp
-                        fromObjTup = (ttFromTup, newFromTupDirection, newFromTupStrength) 
+                        fromObjTup = (ttFromTup, newFromTupDirection, newFromTupStrength)
                         tileSetTemplate.tileTempToPortDict.pop(fromObjTup, None)
 
         for tileTemp in self.tile_templates:
@@ -3154,7 +3138,7 @@ class Module(object):
                         ttFromTup = tileTemp
                         toTup = ttDict.get(key)
                         toTTName = toTup[0]
-                        if toTTName in nameToTTDict: 
+                        if toTTName in nameToTTDict:
                             toTT = nameToTTDict.get(toTTName)
                             toTTDirection = toTup[1]
                             toTTStrength = toTup[2]
@@ -3162,19 +3146,19 @@ class Module(object):
                             rotatedToDirection = oppositeDirectionHorizontal(toTTDirection)
                             fromObjTup = (ttFromTup, rotatedFromDirection, newFromTupStrength)
                             toObjTup = (toTT,rotatedToDirection,toTTStrength)
-                        
+
                             if tileSetTemplate.tileTempToPortDict.get(fromObjTup) == None:
                                 tileSetTemplate.tileTempToPortDict[fromObjTup] = [toObjTup]
-                                
+
                             else:
                                 tileSetTemplate.tileTempToPortDict[fromObjTup].append(toObjTup)
-        
+
 
         for tileTemp in self.tile_templates:
             ttName = tileTemp.name
             if ttName in self.tileTempDictReverseForCopy.keys():
                 tileTempDictList = self.tileTempDictReverseForCopy.get(ttName)
-                
+
                 for ttDict in tileTempDictList:
                     for key in ttDict.keys():
                         newToTupDirection = key[0]
@@ -3182,34 +3166,34 @@ class Module(object):
                         ttToTup = tileTemp
                         toObjTupRev = (ttToTup, newToTupDirection, newToTupStrength)
                         tileSetTemplate.tileTempToPortDictReverse.pop(toObjTupRev, None)
-        
+
         for tileTemp in self.tile_templates:
             ttName = tileTemp.name
             if ttName in self.tileTempDictReverseForCopy.keys():
                 tileTempDictList = self.tileTempDictReverseForCopy.get(ttName)
-                
+
                 for ttDict in tileTempDictList:
                     for key in ttDict.keys():
                         newToTupDirection = key[0]
                         newToTupStrength = key[1]
                         ttToTup = tileTemp
                         fromTup = ttDict.get(key)
-                        
+
                         fromTTName = fromTup[0]
-                       
-                        if fromTTName in nameToTTDict: 
+
+                        if fromTTName in nameToTTDict:
                             fromTT = nameToTTDict.get(fromTTName)
-                            
+
                             fromTTDirection = fromTup[1]
                             fromTTStrength = fromTup[2]
                             newToTupDirectionRotated = oppositeDirectionHorizontal(newToTupDirection)
                             fromTTDirectionRotated = oppositeDirectionHorizontal(fromTTDirection)
                             toObjTupRev = (ttToTup, newToTupDirectionRotated, newToTupStrength)
                             fromObjTupRev = (fromTT,fromTTDirectionRotated,fromTTStrength)
-                        
+
                             if tileSetTemplate.tileTempToPortDictReverse.get(toObjTupRev) == None:
                                 tileSetTemplate.tileTempToPortDictReverse[toObjTupRev] = [fromObjTupRev]
-                                
+
                             else:
                                 tileSetTemplate.tileTempToPortDictReverse[toObjTupRev].append(fromObjTupRev)
     #use oppositedirectionfunctions so switch N,S
@@ -3217,18 +3201,18 @@ class Module(object):
         for nbrhd in self.neighborhood_list:
             newDirection = oppositeDirectionVertical(nbrhd.direction)
             nbrhd.direction = newDirection
-            
-        
+
+
         for join in self.joins:
             newDirection = oppositeDirectionVertical(join.neighborhood.direction)
             join.neighborhood.direction = newDirection
-        
+
         nameToTTDict = {}
         for tileTemp in self.tile_templates:
             nameToTTDict[tileTemp.name] = tileTemp
-        
-  
-            
+
+
+
         for tileTemp in self.tile_templates:
             ttName = tileTemp.name
             if ttName in self.tileTempDictForCopy.keys():
@@ -3238,7 +3222,7 @@ class Module(object):
                         newFromTupDirection = key[0]
                         newFromTupStrength = key[1]
                         ttFromTup = tileTemp
-                        fromObjTup = (ttFromTup, newFromTupDirection, newFromTupStrength) 
+                        fromObjTup = (ttFromTup, newFromTupDirection, newFromTupStrength)
                         tileSetTemplate.tileTempToPortDict.pop(fromObjTup, None)
 
         for tileTemp in self.tile_templates:
@@ -3252,7 +3236,7 @@ class Module(object):
                         ttFromTup = tileTemp
                         toTup = ttDict.get(key)
                         toTTName = toTup[0]
-                        if toTTName in nameToTTDict: 
+                        if toTTName in nameToTTDict:
                             toTT = nameToTTDict.get(toTTName)
                             toTTDirection = toTup[1]
                             toTTStrength = toTup[2]
@@ -3260,19 +3244,19 @@ class Module(object):
                             rotatedToDirection = oppositeDirectionVertical(toTTDirection)
                             fromObjTup = (ttFromTup, rotatedFromDirection, newFromTupStrength)
                             toObjTup = (toTT,rotatedToDirection,toTTStrength)
-                        
+
                             if tileSetTemplate.tileTempToPortDict.get(fromObjTup) == None:
                                 tileSetTemplate.tileTempToPortDict[fromObjTup] = [toObjTup]
-                                
+
                             else:
                                 tileSetTemplate.tileTempToPortDict[fromObjTup].append(toObjTup)
-        
+
 
         for tileTemp in self.tile_templates:
             ttName = tileTemp.name
             if ttName in self.tileTempDictReverseForCopy.keys():
                 tileTempDictList = self.tileTempDictReverseForCopy.get(ttName)
-                
+
                 for ttDict in tileTempDictList:
                     for key in ttDict.keys():
                         newToTupDirection = key[0]
@@ -3280,59 +3264,59 @@ class Module(object):
                         ttToTup = tileTemp
                         toObjTupRev = (ttToTup, newToTupDirection, newToTupStrength)
                         tileSetTemplate.tileTempToPortDictReverse.pop(toObjTupRev, None)
-        
+
         for tileTemp in self.tile_templates:
             ttName = tileTemp.name
             if ttName in self.tileTempDictReverseForCopy.keys():
                 tileTempDictList = self.tileTempDictReverseForCopy.get(ttName)
-                
+
                 for ttDict in tileTempDictList:
                     for key in ttDict.keys():
                         newToTupDirection = key[0]
                         newToTupStrength = key[1]
                         ttToTup = tileTemp
                         fromTup = ttDict.get(key)
-                        
+
                         fromTTName = fromTup[0]
-                       
-                        if fromTTName in nameToTTDict: 
+
+                        if fromTTName in nameToTTDict:
                             fromTT = nameToTTDict.get(fromTTName)
-                            
+
                             fromTTDirection = fromTup[1]
                             fromTTStrength = fromTup[2]
                             newToTupDirectionRotated = oppositeDirectionVertical(newToTupDirection)
                             fromTTDirectionRotated = oppositeDirectionVertical(fromTTDirection)
                             toObjTupRev = (ttToTup, newToTupDirectionRotated, newToTupStrength)
                             fromObjTupRev = (fromTT,fromTTDirectionRotated,fromTTStrength)
-                        
+
                             if tileSetTemplate.tileTempToPortDictReverse.get(toObjTupRev) == None:
                                 tileSetTemplate.tileTempToPortDictReverse[toObjTupRev] = [fromObjTupRev]
-                                
+
                             else:
                                 tileSetTemplate.tileTempToPortDictReverse[toObjTupRev].append(fromObjTupRev)
-        
 
-    
-    
-    
-    
+
+
+
+
+
 
 
     #ask about how this works/ adapt modules to be similar to tst
     #way to do this without using chooser sets? could we use something else in the join instead - just create a dictionary in the join function that stores all of this information?
     def createTiles(self, tileSetTemplate):
-        
-        
+
+
         errors = self.errors()
         if errors:
             raise errors[0]
         tiles = list(self.hardcodedTiles)
         tileTemplatesWithoutInputs = set()
         for chooserSet in self.chooserSets:
-         
-            
+
+
             chooserSetNbhds = chooserSet.neighborhoods
-            
+
             wNbhd = chooserSetNbhds.get(E)
             if wNbhd is not None:
                 wNbhdStrength = wNbhd.strength
@@ -3353,68 +3337,68 @@ class Module(object):
                 sNbhdStrength = sNbhd.strength
             else:
                 sNbhdStrength = None
-                
-            
+
+
             for tileTemplate in chooserSet.tileSet:
-                
+
                 toTileTemplateCs = tileTemplate
                 tupW = (toTileTemplateCs, Direction.West, wNbhdStrength)
                 tupE = (toTileTemplateCs, Direction.East, eNbhdStrength)
                 tupN = (toTileTemplateCs, Direction.North, nNbhdStrength)
                 tupS = (toTileTemplateCs, Direction.South, sNbhdStrength)
-            
+
                 tupWOtherDirectionOne = (toTileTemplateCs, Direction.West, 1)
                 tupEOtherDirectionOne = (toTileTemplateCs, Direction.East, 1)
                 tupNOtherDirectionOne = (toTileTemplateCs, Direction.North, 1)
                 tupSOtherDirectionOne = (toTileTemplateCs, Direction.South, 1)
-            
+
                 tupWOtherDirectionTwo = (toTileTemplateCs, Direction.West, 2)
                 tupEOtherDirectionTwo = (toTileTemplateCs, Direction.East, 2)
                 tupNOtherDirectionTwo = (toTileTemplateCs, Direction.North, 2)
                 tupSOtherDirectionTwo = (toTileTemplateCs, Direction.South, 2)
-            
-            
-            
+
+
+
                 ##alters the glueAnnotation for ports on the "West" Side of the toTileTemplateCs
-            
+
                 retWList = tileSetTemplate.tileTempToPortDictReverse.get(tupW)
-            
+
                 if retWList is not None:
-                
+
                     if len(retWList) <= 1: #if there is more than one tuple in the list cant be a port since port only comes alone in a neighborhood
-                    
+
                         retW = retWList[0]
-                    
+
                         if type(retW[0]) in [Port,initiatorPort]:
                             inputnames = set()
                             inputnames.add(retW[0].name)
-                        
-                        
+
+
                             portParentConfigurationMet = False #
                             portSharedParent = None #
-                        
-                       
-                        
+
+
+
                             previousPort = retW[0] #
-                        
+
                             newVal = tileSetTemplate.tileTempToPortDictReverse.get(retW)
-                            newValTup = newVal[0] 
+                            newValTup = newVal[0]
                             currentPort = newValTup[0] #
-                        
-                        
+
+
                             while type(newValTup[0]) not in [TileTemplate,Tile]:
-                            
+
                                 if (previousPort.parent).parent == (currentPort.parent).parent: #
                                     portParentConfigurationMet = True #
                                     portSharedParent = (previousPort.parent).parent #
-                              
+
                                 previousPort = currentPort #
                                 inputnames.add((newValTup)[0].name)
                                 newValTup = tileSetTemplate.tileTempToPortDictReverse.get(newValTup)[0]
                                 currentPort = newValTup[0] #
-                       
-                        
-                        
+
+
+
                             if portParentConfigurationMet == False:  #
                                 raise portParentConfigurationNotMet(toTileTemplateCs) #
                             ancestorSet = set() #
@@ -3426,63 +3410,63 @@ class Module(object):
                                 ancestorSet.add("rootMod") #
                             else: #
                                 ancestorSet.add(portSharedParent.name) #
-                            
-                        
-                            
+
+
+
                             inputNbrhd = (toTileTemplateCs.parent)._getNeighborhoodForJoin(wNbhdStrength, Direction.West, retW[0], toTileTemplateCs)
                             toTileTempFromNewVal = tileSetTemplate.tileTempToPortDict.get(newValTup)[0]
-                            
+
                             outputNbrhd = (newValTup[0].parent)._getNeighborhoodForJoin(newValTup[2], Direction.West, newValTup[0],toTileTempFromNewVal[0] )
-                            
+
                             for join in outputNbrhd.joins:
                                 inputnames.add(join.fromObj.name)
-            
+
                             outputnames = set()
                             for join in inputNbrhd.joins:
                                 outputnames.add(join.toObj.name)
-            
+
                             newGlueAnnotation = ';{0}-{1}>{2}-{3}'.format(','.join(inputnames),directionShortName(Direction.West),','.join(outputnames),",".join(ancestorSet)) #
-                          
+
                             inputNbrhd.glueAnnotation = newGlueAnnotation
                             outputNbrhd.glueAnnotation = newGlueAnnotation
-                        
-            
+
+
                 retWListOtherDirectionOne = tileSetTemplate.tileTempToPortDict.get(tupWOtherDirectionOne)
-            
-           
+
+
                 if retWListOtherDirectionOne is not None:
-                
+
                     if len(retWListOtherDirectionOne) <= 1: #if there is more than one tuple in the list cant be a port since port only comes alone in a neighborhood
-                    
+
                         retWOtherDirection = retWListOtherDirectionOne[0]
-                    
+
                         if type(retWOtherDirection[0]) in [Port,initiatorPort]:
                             inputnames = set()
                             inputnames.add(retWOtherDirection[0].name)
-                        
+
                             portParentConfigurationMet = False #
                             portSharedParent = None #
-                        
-                        
+
+
                             previousPort = retWOtherDirection[0] #
-                        
-    
-            
+
+
+
                             newVal = tileSetTemplate.tileTempToPortDict.get(retWOtherDirection)
                             newValTup = newVal[0]
                             currentPort = newValTup[0] #
-                        
+
                             while type(newValTup[0]) not in [TileTemplate,Tile]:
-                            
+
                                 if (previousPort.parent).parent == (currentPort.parent).parent: #
                                     portParentConfigurationMet = True #
                                     portSharedParent = (previousPort.parent).parent #
-                            
-                                previousPort = currentPort #    
+
+                                previousPort = currentPort #
                                 inputnames.add((newValTup)[0].name)
                                 newValTup = tileSetTemplate.tileTempToPortDict.get(newValTup)[0]
                                 currentPort = newValTup[0] #
-                            
+
                             if portParentConfigurationMet == False:  #
                                 raise portParentConfigurationNotMet(toTileTemplateCs) #
                             ancestorSet = set() #
@@ -3494,61 +3478,61 @@ class Module(object):
                                 ancestorSet.add("rootMod") #
                             else: #
                                 ancestorSet.add(portSharedParent.name) #
-                            
-                            
+
+
                             outputNbrhd = (toTileTemplateCs.parent)._getNeighborhoodForJoin(1, Direction.West, toTileTemplateCs, retWOtherDirection[0])
                             toTileTempFromNewValOtherDirection = tileSetTemplate.tileTempToPortDictReverse.get(newValTup)[0]
-            
+
                             inputNbrhd = (toTileTempFromNewValOtherDirection[0].parent)._getNeighborhoodForJoin(newValTup[2], Direction.West, toTileTempFromNewValOtherDirection[0],newValTup[0] )
-            
+
                             outputnames = set()
-            
+
                             for join in inputNbrhd.joins:
                                 outputnames.add(join.toObj.name)
-            
-                        
+
+
                             for join in outputNbrhd.joins:
                                 inputnames.add(join.fromObj.name)
-            
+
                             newGlueAnnotation = ';{0}-{1}>{2}-{3}'.format(','.join(inputnames),directionShortName(Direction.West),','.join(outputnames),",".join(ancestorSet))
-            
+
                             inputNbrhd.glueAnnotation = newGlueAnnotation
                             outputNbrhd.glueAnnotation = newGlueAnnotation
-            
-           
+
+
                 retWListOtherDirectionTwo = tileSetTemplate.tileTempToPortDict.get(tupWOtherDirectionTwo)
                 if retWListOtherDirectionTwo is not None:
-                
+
                     if len(retWListOtherDirectionTwo) <= 1: #if there is more than one tuple in the list cant be a port since port only comes alone in a neighborhood
-                    
+
                         retWOtherDirection = retWListOtherDirectionTwo[0]
-                    
+
                         if type(retWOtherDirection[0]) in [Port,initiatorPort]:
-                        
+
                             inputnames = set()
                             inputnames.add(retWOtherDirection[0].name)
-                        
+
                             portParentConfigurationMet = False #
                             portSharedParent = None #
-                        
+
                             previousPort = retWOtherDirection[0] #
-                        
-    
-            
+
+
+
                             newVal = tileSetTemplate.tileTempToPortDict.get(retWOtherDirection)
                             newValTup = newVal[0]
                             currentPort = newValTup[0] #
                             while type(newValTup[0]) not in [TileTemplate,Tile]:
-                            
+
                                 if (previousPort.parent).parent == (currentPort.parent).parent: #
                                     portParentConfigurationMet = True #
                                     portSharedParent = (previousPort.parent).parent #
-                                
-                                previousPort = currentPort #  
+
+                                previousPort = currentPort #
                                 inputnames.add((newValTup)[0].name)
                                 newValTup = tileSetTemplate.tileTempToPortDict.get(newValTup)[0]
                                 currentPort = newValTup[0] #
-                            
+
                             if portParentConfigurationMet == False:  #
                                 raise portParentConfigurationNotMet(toTileTemplateCs) #
                             ancestorSet = set() #
@@ -3560,63 +3544,63 @@ class Module(object):
                                 ancestorSet.add("rootMod") #
                             else: #
                                 ancestorSet.add(portSharedParent.name) #
-                            
+
                             outputNbrhd = (toTileTemplateCs.parent)._getNeighborhoodForJoin(2, Direction.West, toTileTemplateCs, retWOtherDirection[0])
                             toTileTempFromNewValOtherDirection = tileSetTemplate.tileTempToPortDictReverse.get(newValTup)[0]
-            
+
                             inputNbrhd = (toTileTempFromNewValOtherDirection[0].parent)._getNeighborhoodForJoin(newValTup[2], Direction.West, toTileTempFromNewValOtherDirection[0],newValTup[0] )
                             outputnames = set()
-            
+
                             for join in inputNbrhd.joins:
                                 outputnames.add(join.toObj.name)
-            
-                        
+
+
                             for join in outputNbrhd.joins:
                                 inputnames.add(join.fromObj.name)
-            
+
                             newGlueAnnotation = ';{0}-{1}>{2}-{3}'.format(','.join(inputnames),directionShortName(Direction.West),','.join(outputnames),",".join(ancestorSet))
-            
+
                             inputNbrhd.glueAnnotation = newGlueAnnotation
                             outputNbrhd.glueAnnotation = newGlueAnnotation
-            
-            
+
+
                 #Alters the Glue Annotation for the "East" Side
-            
+
                 retEList = tileSetTemplate.tileTempToPortDictReverse.get(tupE)
-                
+
                 if retEList is not None:
-                
+
                     if len(retEList) <= 1: #if there is more than one tuple in the list cant be a port since port only comes alone in a neighborhood
-                    
+
                         retE = retEList[0]
-                    
+
                         if type(retE[0]) in [Port,initiatorPort]:
                             inputnames = set()
                             inputnames.add(retE[0].name)
-                        
+
                             portParentConfigurationMet = False #
                             portSharedParent = None #
-                        
-                       
-                        
+
+
+
                             previousPort = retE[0] #
-                        
-    
-            
+
+
+
                             newVal = tileSetTemplate.tileTempToPortDictReverse.get(retE)
                             newValTup = newVal[0]
                             currentPort = newValTup[0] #
                             while type(newValTup[0]) not in [TileTemplate,Tile]:
-                            
+
                                 if (previousPort.parent).parent == (currentPort.parent).parent: #
                                     portParentConfigurationMet = True #
                                     portSharedParent = (previousPort.parent).parent #
-                                
-                                previousPort = currentPort #  
+
+                                previousPort = currentPort #
                                 inputnames.add((newValTup)[0].name)
                                 newValTup = tileSetTemplate.tileTempToPortDictReverse.get(newValTup)[0]
                                 currentPort = newValTup[0] #
-                            
+
                             if portParentConfigurationMet == False:  #
                                 raise portParentConfigurationNotMet(toTileTemplateCs) #
                             ancestorSet = set() #
@@ -3628,48 +3612,48 @@ class Module(object):
                                 ancestorSet.add("rootMod") #
                             else: #
                                 ancestorSet.add(portSharedParent.name) #
-                            
-                        
-                            
+
+
+
                             inputNbrhd = (toTileTemplateCs.parent)._getNeighborhoodForJoin(eNbhdStrength, Direction.East, retE[0], toTileTemplateCs)
                             toTileTempFromNewVal = tileSetTemplate.tileTempToPortDict.get(newValTup)[0]
-            
+
                             outputNbrhd = (newValTup[0].parent)._getNeighborhoodForJoin(newValTup[2], Direction.East, newValTup[0],toTileTempFromNewVal[0] )
-            
+
                             for join in outputNbrhd.joins:
                                 inputnames.add(join.fromObj.name)
-            
+
                             outputnames = set()
                             for join in inputNbrhd.joins:
                                 outputnames.add(join.toObj.name)
-            
+
                             newGlueAnnotation = ';{0}-{1}>{2}-{3}'.format(','.join(inputnames),directionShortName(Direction.East),','.join(outputnames),",".join(ancestorSet))
-            
+
                             inputNbrhd.glueAnnotation = newGlueAnnotation
                             outputNbrhd.glueAnnotation = newGlueAnnotation
-                        
-            
+
+
                 #for other direction strength one
                 retEListOtherDirectionOne = tileSetTemplate.tileTempToPortDict.get(tupEOtherDirectionOne)
-            
-           
+
+
                 if retEListOtherDirectionOne is not None:
-                
+
                     if len(retEListOtherDirectionOne) <= 1: #if there is more than one tuple in the list cant be a port since port only comes alone in a neighborhood
-                    
+
                         retEOtherDirection = retEListOtherDirectionOne[0]
-                    
+
                         if type(retEOtherDirection[0]) in [Port,initiatorPort]:
                             inputnames = set()
                             inputnames.add(retEOtherDirection[0].name)
-                        
+
                             portParentConfigurationMet = False #
                             portSharedParent = None #
-                        
+
                             previousPort = retEOtherDirection[0] #
-                        
-    
-            
+
+
+
                             newVal = tileSetTemplate.tileTempToPortDict.get(retEOtherDirection)
                             newValTup = newVal[0]
                             currentPort = newValTup[0] #
@@ -3677,12 +3661,12 @@ class Module(object):
                                 if (previousPort.parent).parent == (currentPort.parent).parent: #
                                     portParentConfigurationMet = True #
                                     portSharedParent = (previousPort.parent).parent #
-                                
-                                previousPort = currentPort # 
+
+                                previousPort = currentPort #
                                 inputnames.add((newValTup)[0].name)
                                 newValTup = tileSetTemplate.tileTempToPortDict.get(newValTup)[0]
                                 currentPort = newValTup[0] #
-                            
+
                             if portParentConfigurationMet == False:  #
                                 raise portParentConfigurationNotMet(toTileTemplateCs) #
                             ancestorSet = set() #
@@ -3694,47 +3678,47 @@ class Module(object):
                                 ancestorSet.add("rootMod") #
                             else: #
                                 ancestorSet.add(portSharedParent.name) #
-                            
+
                             outputNbrhd = (toTileTemplateCs.parent)._getNeighborhoodForJoin(1, Direction.East, toTileTemplateCs, retEOtherDirection[0])
                             toTileTempFromNewValOtherDirection = tileSetTemplate.tileTempToPortDictReverse.get(newValTup)[0]
-            
+
                             inputNbrhd = (toTileTempFromNewValOtherDirection[0].parent)._getNeighborhoodForJoin(newValTup[2], Direction.East, toTileTempFromNewValOtherDirection[0],newValTup[0] )
-            
+
                             outputnames = set()
-            
+
                             for join in inputNbrhd.joins:
                                 outputnames.add(join.toObj.name)
-            
-                        
+
+
                             for join in outputNbrhd.joins:
                                 inputnames.add(join.fromObj.name)
-            
+
                             newGlueAnnotation = ';{0}-{1}>{2}-{3}'.format(','.join(inputnames),directionShortName(Direction.East),','.join(outputnames),",".join(ancestorSet))
-            
+
                             inputNbrhd.glueAnnotation = newGlueAnnotation
                             outputNbrhd.glueAnnotation = newGlueAnnotation
-            
+
                 #for other direction strength 2
-           
+
                 retEListOtherDirectionTwo = tileSetTemplate.tileTempToPortDict.get(tupEOtherDirectionTwo)
                 if retEListOtherDirectionTwo is not None:
-                
+
                     if len(retEListOtherDirectionTwo) <= 1: #if there is more than one tuple in the list cant be a port since port only comes alone in a neighborhood
-                    
+
                         retEOtherDirection = retEListOtherDirectionTwo[0]
-                    
+
                         if type(retEOtherDirection[0]) in [Port,initiatorPort]:
-                        
+
                             inputnames = set()
                             inputnames.add(retEOtherDirection[0].name)
-                        
+
                             portParentConfigurationMet = False #
                             portSharedParent = None #
-                        
+
                             previousPort = retEOtherDirection[0] #
-                        
-    
-            
+
+
+
                             newVal = tileSetTemplate.tileTempToPortDict.get(retEOtherDirection)
                             newValTup = newVal[0]
                             currentPort = newValTup[0] #
@@ -3742,12 +3726,12 @@ class Module(object):
                                 if (previousPort.parent).parent == (currentPort.parent).parent: #
                                     portParentConfigurationMet = True #
                                     portSharedParent = (previousPort.parent).parent #
-                                
-                                previousPort = currentPort # 
+
+                                previousPort = currentPort #
                                 inputnames.add((newValTup)[0].name)
                                 newValTup = tileSetTemplate.tileTempToPortDict.get(newValTup)[0]
                                 currentPort = newValTup[0] #
-                        
+
                             if portParentConfigurationMet == False:  #
                                 raise portParentConfigurationNotMet(toTileTemplateCs) #
                             ancestorSet = set() #
@@ -3759,49 +3743,49 @@ class Module(object):
                                 ancestorSet.add("rootMod") #
                             else: #
                                 ancestorSet.add(portSharedParent.name) #
-                            
-                            
+
+
                             outputNbrhd = (toTileTemplateCs.parent)._getNeighborhoodForJoin(2, Direction.East, toTileTemplateCs, retEOtherDirection[0])
                             toTileTempFromNewValOtherDirection = tileSetTemplate.tileTempToPortDictReverse.get(newValTup)[0]
-            
+
                             inputNbrhd = (toTileTempFromNewValOtherDirection[0].parent)._getNeighborhoodForJoin(newValTup[2], Direction.East, toTileTempFromNewValOtherDirection[0],newValTup[0] )
                             outputnames = set()
-            
+
                             for join in inputNbrhd.joins:
                                 outputnames.add(join.toObj.name)
-            
-                        
+
+
                             for join in outputNbrhd.joins:
                                 inputnames.add(join.fromObj.name)
-            
+
                             newGlueAnnotation = ';{0}-{1}>{2}-{3}'.format(','.join(inputnames),directionShortName(Direction.East),','.join(outputnames),",".join(ancestorSet))
-            
+
                             inputNbrhd.glueAnnotation = newGlueAnnotation
                             outputNbrhd.glueAnnotation = newGlueAnnotation
-            
+
                 #Alters the Glue annotation for the "North" side
-            
+
                 retNList = tileSetTemplate.tileTempToPortDictReverse.get(tupN)
-            
+
                 if retNList is not None:
-                
+
                     if len(retNList) <= 1: #if there is more than one tuple in the list cant be a port since port only comes alone in a neighborhood
-                    
+
                         retN = retNList[0]
-                    
+
                         if type(retN[0]) in [Port,initiatorPort]:
                             inputnames = set()
                             inputnames.add(retN[0].name)
-                        
+
                             portParentConfigurationMet = False #
                             portSharedParent = None #
-                        
-                       
-                        
+
+
+
                             previousPort = retN[0] #
-                        
-    
-            
+
+
+
                             newVal = tileSetTemplate.tileTempToPortDictReverse.get(retN)
                             newValTup = newVal[0]
                             currentPort = newValTup[0] #
@@ -3809,12 +3793,12 @@ class Module(object):
                                 if (previousPort.parent).parent == (currentPort.parent).parent: #
                                     portParentConfigurationMet = True #
                                     portSharedParent = (previousPort.parent).parent #
-                                
-                                previousPort = currentPort # 
+
+                                previousPort = currentPort #
                                 inputnames.add((newValTup)[0].name)
                                 newValTup = tileSetTemplate.tileTempToPortDictReverse.get(newValTup)[0]
                                 currentPort = newValTup[0] #
-                            
+
                             if portParentConfigurationMet == False:  #
                                 raise portParentConfigurationNotMet(toTileTemplateCs) #
                             ancestorSet = set() #
@@ -3826,49 +3810,49 @@ class Module(object):
                                 ancestorSet.add("rootMod") #
                             else: #
                                 ancestorSet.add(portSharedParent.name) #
-                        
-                            
+
+
                             inputNbrhd = (toTileTemplateCs.parent)._getNeighborhoodForJoin(nNbhdStrength, Direction.North, retN[0], toTileTemplateCs)
                             toTileTempFromNewVal = tileSetTemplate.tileTempToPortDict.get(newValTup)[0]
-            
+
                             outputNbrhd = (newValTup[0].parent)._getNeighborhoodForJoin(newValTup[2], Direction.North, newValTup[0],toTileTempFromNewVal[0] )
-            
+
                             for join in outputNbrhd.joins:
                                 inputnames.add(join.fromObj.name)
-            
+
                             outputnames = set()
                             for join in inputNbrhd.joins:
                                 outputnames.add(join.toObj.name)
-            
+
                             newGlueAnnotation = ';{0}-{1}>{2}-{3}'.format(','.join(inputnames),directionShortName(Direction.North),','.join(outputnames),",".join(ancestorSet))
-            
+
                             inputNbrhd.glueAnnotation = newGlueAnnotation
                             outputNbrhd.glueAnnotation = newGlueAnnotation
-                        
-            
+
+
                 #for other direction strength one
                 retNListOtherDirectionOne = tileSetTemplate.tileTempToPortDict.get(tupNOtherDirectionOne)
-        
-           
+
+
                 if retNListOtherDirectionOne is not None:
-                
+
                     if len(retNListOtherDirectionOne) <= 1: #if there is more than one tuple in the list cant be a port since port only comes alone in a neighborhood
-                    
+
                         retNOtherDirection = retNListOtherDirectionOne[0]
-                    
+
                         if type(retNOtherDirection[0]) in [Port,initiatorPort]:
                             inputnames = set()
                             inputnames.add(retNOtherDirection[0].name)
-                        
+
                             portParentConfigurationMet = False #
                             portSharedParent = None #
-                        
-                       
-                        
+
+
+
                             previousPort = retNOtherDirection[0] #
-                        
-    
-            
+
+
+
                             newVal = tileSetTemplate.tileTempToPortDict.get(retNOtherDirection)
                             newValTup = newVal[0]
                             currentPort = newValTup[0] #
@@ -3876,12 +3860,12 @@ class Module(object):
                                 if (previousPort.parent).parent == (currentPort.parent).parent: #
                                     portParentConfigurationMet = True #
                                     portSharedParent = (previousPort.parent).parent #
-                                
-                                previousPort = currentPort # 
+
+                                previousPort = currentPort #
                                 inputnames.add((newValTup)[0].name)
                                 newValTup = tileSetTemplate.tileTempToPortDict.get(newValTup)[0]
                                 currentPort = newValTup[0] #
-                            
+
                             if portParentConfigurationMet == False:  #
                                 raise portParentConfigurationNotMet(toTileTemplateCs) #
                             ancestorSet = set() #
@@ -3893,50 +3877,50 @@ class Module(object):
                                 ancestorSet.add("rootMod") #
                             else: #
                                 ancestorSet.add(portSharedParent.name) #
-                            
+
                             outputNbrhd = (toTileTemplateCs.parent)._getNeighborhoodForJoin(1, Direction.North, toTileTemplateCs, retNOtherDirection[0])
                             toTileTempFromNewValOtherDirection = tileSetTemplate.tileTempToPortDictReverse.get(newValTup)[0]
-            
+
                             inputNbrhd = (toTileTempFromNewValOtherDirection[0].parent)._getNeighborhoodForJoin(newValTup[2], Direction.North, toTileTempFromNewValOtherDirection[0],newValTup[0] )
-            
+
                             outputnames = set()
-            
+
                             for join in inputNbrhd.joins:
                                 outputnames.add(join.toObj.name)
-            
-                        
+
+
                             for join in outputNbrhd.joins:
                                 inputnames.add(join.fromObj.name)
-            
+
                             newGlueAnnotation = ';{0}-{1}>{2}-{3}'.format(','.join(inputnames),directionShortName(Direction.North),','.join(outputnames),",".join(ancestorSet))
-            
+
                             inputNbrhd.glueAnnotation = newGlueAnnotation
                             outputNbrhd.glueAnnotation = newGlueAnnotation
-            
+
                 #for other direction strength 2
-           
+
                 retNListOtherDirectionTwo = tileSetTemplate.tileTempToPortDict.get(tupNOtherDirectionTwo)
-         
+
                 if retNListOtherDirectionTwo is not None:
-                
+
                     if len(retNListOtherDirectionTwo) <= 1: #if there is more than one tuple in the list cant be a port since port only comes alone in a neighborhood
-                    
+
                         retNOtherDirection = retNListOtherDirectionTwo[0]
-                    
+
                         if type(retNOtherDirection[0]) in [Port,initiatorPort]:
-                        
+
                             inputnames = set()
                             inputnames.add(retNOtherDirection[0].name)
-                        
+
                             portParentConfigurationMet = False #
                             portSharedParent = None #
-                        
-                       
-                        
+
+
+
                             previousPort = retNOtherDirection[0] #
-                        
-    
-            
+
+
+
                             newVal = tileSetTemplate.tileTempToPortDict.get(retNOtherDirection)
                             newValTup = newVal[0]
                             currentPort = newValTup[0] #
@@ -3944,12 +3928,12 @@ class Module(object):
                                 if (previousPort.parent).parent == (currentPort.parent).parent: #
                                     portParentConfigurationMet = True #
                                     portSharedParent = (previousPort.parent).parent #
-                                
-                                previousPort = currentPort # 
+
+                                previousPort = currentPort #
                                 inputnames.add((newValTup)[0].name)
                                 newValTup = tileSetTemplate.tileTempToPortDict.get(newValTup)[0]
                                 currentPort = newValTup[0] #
-                            
+
                             if portParentConfigurationMet == False:  #
                                 raise portParentConfigurationNotMet(toTileTemplateCs) #
                             ancestorSet = set() #
@@ -3961,49 +3945,49 @@ class Module(object):
                                 ancestorSet.add("rootMod") #
                             else: #
                                 ancestorSet.add(portSharedParent.name) #
-                            
-                            
+
+
                             outputNbrhd = (toTileTemplateCs.parent)._getNeighborhoodForJoin(2, Direction.North, toTileTemplateCs, retNOtherDirection[0])
                             toTileTempFromNewValOtherDirection = tileSetTemplate.tileTempToPortDictReverse.get(newValTup)[0]
-            
+
                             inputNbrhd = (toTileTempFromNewValOtherDirection[0].parent)._getNeighborhoodForJoin(newValTup[2], Direction.North, toTileTempFromNewValOtherDirection[0],newValTup[0] )
                             outputnames = set()
-            
+
                             for join in inputNbrhd.joins:
                                 outputnames.add(join.toObj.name)
-            
-                        
+
+
                             for join in outputNbrhd.joins:
                                 inputnames.add(join.fromObj.name)
-            
+
                             newGlueAnnotation = ';{0}-{1}>{2}-{3}'.format(','.join(inputnames),directionShortName(Direction.North),','.join(outputnames),",".join(ancestorSet))
-            
+
                             inputNbrhd.glueAnnotation = newGlueAnnotation
                             outputNbrhd.glueAnnotation = newGlueAnnotation
-            
+
                 #Alters the Glue Annotation for the "South" Side
                 retSList = tileSetTemplate.tileTempToPortDictReverse.get(tupS)
-            
+
                 if retSList is not None:
-                
+
                     if len(retSList) <= 1: #if there is more than one tuple in the list cant be a port since port only comes alone in a neighborhood
-                    
+
                         retS = retSList[0]
-                    
+
                         if type(retS[0]) in [Port,initiatorPort]:
                             inputnames = set()
                             inputnames.add(retS[0].name)
-                        
+
                             portParentConfigurationMet = False #
                             portSharedParent = None #
-                        
-                       
-                        
+
+
+
                             previousPort = retS[0] #
-                        
-                        
-    
-            
+
+
+
+
                             newVal = tileSetTemplate.tileTempToPortDictReverse.get(retS)
                             newValTup = newVal[0]
                             currentPort = newValTup[0] #
@@ -4011,12 +3995,12 @@ class Module(object):
                                 if (previousPort.parent).parent == (currentPort.parent).parent: #
                                     portParentConfigurationMet = True #
                                     portSharedParent = (previousPort.parent).parent #
-                                
-                                previousPort = currentPort # 
+
+                                previousPort = currentPort #
                                 inputnames.add((newValTup)[0].name)
                                 newValTup = tileSetTemplate.tileTempToPortDictReverse.get(newValTup)[0]
                                 currentPort = newValTup[0] #
-                            
+
                             if portParentConfigurationMet == False:  #
                                 raise portParentConfigurationNotMet(toTileTemplateCs) #
                             ancestorSet = set() #
@@ -4028,52 +4012,52 @@ class Module(object):
                                 ancestorSet.add("rootMod") #
                             else: #
                                 ancestorSet.add(portSharedParent.name) #
-                        
-                            
-                        
-                            
+
+
+
+
                             inputNbrhd = (toTileTemplateCs.parent)._getNeighborhoodForJoin(sNbhdStrength, Direction.South, retS[0], toTileTemplateCs)
                             toTileTempFromNewVal = tileSetTemplate.tileTempToPortDict.get(newValTup)[0]
-            
+
                             outputNbrhd = (newValTup[0].parent)._getNeighborhoodForJoin(newValTup[2], Direction.South, newValTup[0],toTileTempFromNewVal[0] )
-            
+
                             for join in outputNbrhd.joins:
                                 inputnames.add(join.fromObj.name)
-            
+
                             outputnames = set()
                             for join in inputNbrhd.joins:
                                 outputnames.add(join.toObj.name)
-            
+
                             newGlueAnnotation = ';{0}-{1}>{2}-{3}'.format(','.join(inputnames),directionShortName(Direction.South),','.join(outputnames),",".join(ancestorSet))
-            
+
                             inputNbrhd.glueAnnotation = newGlueAnnotation
                             outputNbrhd.glueAnnotation = newGlueAnnotation
-                        
-            
+
+
                 #for other direction strength one
                 retSListOtherDirectionOne = tileSetTemplate.tileTempToPortDict.get(tupSOtherDirectionOne)
-            
-           
+
+
                 if retSListOtherDirectionOne is not None:
-                
+
                     if len(retSListOtherDirectionOne) <= 1: #if there is more than one tuple in the list cant be a port since port only comes alone in a neighborhood
-                    
+
                         retSOtherDirection = retSListOtherDirectionOne[0]
-                    
+
                         if type(retSOtherDirection[0]) in [Port,initiatorPort]:
                             inputnames = set()
                             inputnames.add(retSOtherDirection[0].name)
-                        
+
                             portParentConfigurationMet = False #
                             portSharedParent = None #
-                        
-                       
-                        
+
+
+
                             previousPort = retSOtherDirection[0] #
-                        
-                        
-    
-            
+
+
+
+
                             newVal = tileSetTemplate.tileTempToPortDict.get(retSOtherDirection)
                             newValTup = newVal[0]
                             currentPort = newValTup[0] #
@@ -4081,12 +4065,12 @@ class Module(object):
                                 if (previousPort.parent).parent == (currentPort.parent).parent: #
                                     portParentConfigurationMet = True #
                                     portSharedParent = (previousPort.parent).parent #
-                                
-                                previousPort = currentPort # 
+
+                                previousPort = currentPort #
                                 inputnames.add((newValTup)[0].name)
                                 newValTup = tileSetTemplate.tileTempToPortDict.get(newValTup)[0]
                                 currentPort = newValTup[0] #
-                            
+
                             if portParentConfigurationMet == False:  #
                                 raise portParentConfigurationNotMet(toTileTemplateCs) #
                             ancestorSet = set() #
@@ -4098,49 +4082,49 @@ class Module(object):
                                 ancestorSet.add("rootMod") #
                             else: #
                                 ancestorSet.add(portSharedParent.name) #
-                            
+
                             outputNbrhd = (toTileTemplateCs.parent)._getNeighborhoodForJoin(1, Direction.South, toTileTemplateCs, retSOtherDirection[0])
                             toTileTempFromNewValOtherDirection = tileSetTemplate.tileTempToPortDictReverse.get(newValTup)[0]
-            
+
                             inputNbrhd = (toTileTempFromNewValOtherDirection[0].parent)._getNeighborhoodForJoin(newValTup[2], Direction.South, toTileTempFromNewValOtherDirection[0],newValTup[0] )
-                        
+
                             outputnames = set()
-            
+
                             for join in inputNbrhd.joins:
                                 outputnames.add(join.toObj.name)
-            
-                        
+
+
                             for join in outputNbrhd.joins:
                                 inputnames.add(join.fromObj.name)
-            
+
                             newGlueAnnotation = ';{0}-{1}>{2}-{3}'.format(','.join(inputnames),directionShortName(Direction.South),','.join(outputnames),",".join(ancestorSet))
-            
+
                             inputNbrhd.glueAnnotation = newGlueAnnotation
                             outputNbrhd.glueAnnotation = newGlueAnnotation
-            
+
                 #for other direction strength 2
-           
+
                 retSListOtherDirectionTwo = tileSetTemplate.tileTempToPortDict.get(tupSOtherDirectionTwo)
                 if retSListOtherDirectionTwo is not None:
-                
+
                     if len(retSListOtherDirectionTwo) <= 1: #if there is more than one tuple in the list cant be a port since port only comes alone in a neighborhood
-                    
+
                         retSOtherDirection = retSListOtherDirectionTwo[0]
-                    
+
                         if type(retSOtherDirection[0]) in [Port,initiatorPort]:
-                        
+
                             inputnames = set()
                             inputnames.add(retSOtherDirection[0].name)
-                        
+
                             portParentConfigurationMet = False #
                             portSharedParent = None #
-                        
-                       
-                        
+
+
+
                             previousPort = retSOtherDirection[0] #
-                        
-    
-            
+
+
+
                             newVal = tileSetTemplate.tileTempToPortDict.get(retSOtherDirection)
                             newValTup = newVal[0]
                             currentPort = newValTup[0] #
@@ -4148,12 +4132,12 @@ class Module(object):
                                 if (previousPort.parent).parent == (currentPort.parent).parent: #
                                     portParentConfigurationMet = True #
                                     portSharedParent = (previousPort.parent).parent #
-                                
-                                previousPort = currentPort # 
+
+                                previousPort = currentPort #
                                 inputnames.add((newValTup)[0].name)
                                 newValTup = tileSetTemplate.tileTempToPortDict.get(newValTup)[0]
                                 currentPort = newValTup[0] #
-                            
+
                             if portParentConfigurationMet == False:  #
                                 raise portParentConfigurationNotMet(toTileTemplateCs) #
                             ancestorSet = set() #
@@ -4165,28 +4149,28 @@ class Module(object):
                                 ancestorSet.add("rootMod") #
                             else: #
                                 ancestorSet.add(portSharedParent.name) #
-                            
-                            
+
+
                             outputNbrhd = (toTileTemplateCs.parent)._getNeighborhoodForJoin(2, Direction.South, toTileTemplateCs, retSOtherDirection[0])
                             toTileTempFromNewValOtherDirection = tileSetTemplate.tileTempToPortDictReverse.get(newValTup)[0]
-            
+
                             inputNbrhd = (toTileTempFromNewValOtherDirection[0].parent)._getNeighborhoodForJoin(newValTup[2], Direction.South, toTileTempFromNewValOtherDirection[0],newValTup[0] )
                             outputnames = set()
-            
+
                             for join in inputNbrhd.joins:
                                 outputnames.add(join.toObj.name)
-            
-                        
+
+
                             for join in outputNbrhd.joins:
                                 inputnames.add(join.fromObj.name)
-            
+
                             newGlueAnnotation = ';{0}-{1}>{2}-{3}'.format(','.join(inputnames),directionShortName(Direction.South),','.join(outputnames),",".join(ancestorSet))
-            
+
                             inputNbrhd.glueAnnotation = newGlueAnnotation
                             outputNbrhd.glueAnnotation = newGlueAnnotation
-                
+
                 #add module to tile template glue
-                #west        
+                #west
                 retWTileTempList = tileSetTemplate.tileTempToPortDictReverse.get(tupW)
                 if retWTileTempList is not None:
                     retWTileTemp = retWTileTempList[0]
@@ -4198,14 +4182,14 @@ class Module(object):
                                 pass
                             else:
                                 inputNbrhd.glueAnnotation += "-" + toTileTemplateCs.parent.name
-                                
+
                             if inputNbrhd != toTileTemplateCs.inputNeighborhood(Direction.East):
                                 if toTileTemplateCs.parent.name in toTileTemplateCs.inputNeighborhood(Direction.East).glueAnnotation:
                                     pass
                                 else:
                                     toTileTemplateCs.inputNeighborhood(Direction.East).glueAnnotation += "-" + toTileTemplateCs.parent.name
-                                
-                        
+
+
                 if tupW in tileSetTemplate.tileTempToPortDict.keys():
                     newValTupTileTemp = tileSetTemplate.tileTempToPortDict.get(tupW)[0]
                     if type(newValTupTileTemp[0]) in [TileTemplate,Tile]:
@@ -4215,13 +4199,13 @@ class Module(object):
                                 pass
                             else:
                                 outputNbrhd.glueAnnotation += "-" + toTileTemplateCs.parent.name
-                                
+
                             if outputNbrhd != toTileTemplateCs.outputNeighborhood(Direction.West):
                                 if toTileTemplateCs.parent.name in toTileTemplateCs.outputNeighborhood(Direction.West).glueAnnotation:
                                     pass
                                 else:
                                     toTileTemplateCs.outputNeighborhood(Direction.West).glueAnnotation += "-" + toTileTemplateCs.parent.name
-                                
+
                 if tupWOtherDirectionOne in tileSetTemplate.tileTempToPortDict.keys():
                     newValTupTileTemp = tileSetTemplate.tileTempToPortDict.get(tupWOtherDirectionOne)[0]
                     if type(newValTupTileTemp[0]) in [TileTemplate,Tile]:
@@ -4231,13 +4215,13 @@ class Module(object):
                                 pass
                             else:
                                 outputNbrhd.glueAnnotation += "-" + toTileTemplateCs.parent.name
-                                
+
                             if outputNbrhd != toTileTemplateCs.outputNeighborhood(Direction.West):
                                 if toTileTemplateCs.parent.name in toTileTemplateCs.outputNeighborhood(Direction.West).glueAnnotation:
                                     pass
                                 else:
                                     toTileTemplateCs.outputNeighborhood(Direction.West).glueAnnotation += "-" + toTileTemplateCs.parent.name
-                                
+
                 if tupWOtherDirectionTwo in tileSetTemplate.tileTempToPortDict.keys():
                     newValTupTileTemp = tileSetTemplate.tileTempToPortDict.get(tupWOtherDirectionTwo)[0]
                     if type(newValTupTileTemp[0]) in [TileTemplate,Tile]:
@@ -4246,19 +4230,19 @@ class Module(object):
                             if toTileTemplateCs.parent.name in outputNbrhd.glueAnnotation:
                                 pass
                             else:
-                                outputNbrhd.glueAnnotation += "-" + toTileTemplateCs.parent.name 
-                            
+                                outputNbrhd.glueAnnotation += "-" + toTileTemplateCs.parent.name
+
                             if outputNbrhd != toTileTemplateCs.outputNeighborhood(Direction.West):
                                 if toTileTemplateCs.parent.name in toTileTemplateCs.outputNeighborhood(Direction.West).glueAnnotation:
                                     pass
                                 else:
                                     toTileTemplateCs.outputNeighborhood(Direction.West).glueAnnotation += "-" + toTileTemplateCs.parent.name
-                                   
+
                 #east
                 retETileTempList = tileSetTemplate.tileTempToPortDictReverse.get(tupE)
-                
+
                 if retETileTempList is not None:
-                    
+
                     retETileTemp = retETileTempList[0]
                     if type(retETileTemp[0]) in [TileTemplate,Tile]:
                         #add output neighborhood
@@ -4268,15 +4252,15 @@ class Module(object):
                                 pass
                             else:
                                 inputNbrhd.glueAnnotation += "-" + toTileTemplateCs.parent.name
-                                
-                                
+
+
                             if inputNbrhd != toTileTemplateCs.inputNeighborhood(Direction.West):
                                 if toTileTemplateCs.parent.name in toTileTemplateCs.inputNeighborhood(Direction.West).glueAnnotation:
                                     pass
                                 else:
                                     toTileTemplateCs.inputNeighborhood(Direction.West).glueAnnotation += "-" + toTileTemplateCs.parent.name
-                        
-                        
+
+
                 if tupE in tileSetTemplate.tileTempToPortDict.keys():
                     newValTupTileTemp = tileSetTemplate.tileTempToPortDict.get(tupE)[0]
                     if type(newValTupTileTemp[0]) in [TileTemplate,Tile]:
@@ -4286,13 +4270,13 @@ class Module(object):
                                 pass
                             else:
                                 outputNbrhd.glueAnnotation += "-" + toTileTemplateCs.parent.name
-                            
+
                             if outputNbrhd != toTileTemplateCs.outputNeighborhood(Direction.East):
                                 if toTileTemplateCs.parent.name in toTileTemplateCs.outputNeighborhood(Direction.East).glueAnnotation:
                                     pass
                                 else:
                                     toTileTemplateCs.outputNeighborhood(Direction.East).glueAnnotation += "-" + toTileTemplateCs.parent.name
-                            
+
                 if tupEOtherDirectionOne in tileSetTemplate.tileTempToPortDict.keys():
                     newValTupTileTemp = tileSetTemplate.tileTempToPortDict.get(tupEOtherDirectionOne)[0]
                     if type(newValTupTileTemp[0]) in [TileTemplate,Tile]:
@@ -4302,13 +4286,13 @@ class Module(object):
                                 pass
                             else:
                                 outputNbrhd.glueAnnotation += "-" + toTileTemplateCs.parent.name
-                                
+
                             if outputNbrhd != toTileTemplateCs.outputNeighborhood(Direction.East):
                                 if toTileTemplateCs.parent.name in toTileTemplateCs.outputNeighborhood(Direction.East).glueAnnotation:
                                     pass
                                 else:
                                     toTileTemplateCs.outputNeighborhood(Direction.East).glueAnnotation += "-" + toTileTemplateCs.parent.name
-                            
+
                 if tupEOtherDirectionTwo in tileSetTemplate.tileTempToPortDict.keys():
                     newValTupTileTemp = tileSetTemplate.tileTempToPortDict.get(tupEOtherDirectionTwo)[0]
                     if type(newValTupTileTemp[0]) in [TileTemplate,Tile]:
@@ -4317,41 +4301,41 @@ class Module(object):
                             if toTileTemplateCs.parent.name in outputNbrhd.glueAnnotation:
                                 pass
                             else:
-                                outputNbrhd.glueAnnotation += "-" + toTileTemplateCs.parent.name  
-                                
+                                outputNbrhd.glueAnnotation += "-" + toTileTemplateCs.parent.name
+
                             if outputNbrhd != toTileTemplateCs.outputNeighborhood(Direction.East):
                                 if toTileTemplateCs.parent.name in toTileTemplateCs.outputNeighborhood(Direction.East).glueAnnotation:
                                     pass
                                 else:
                                     toTileTemplateCs.outputNeighborhood(Direction.East).glueAnnotation += "-" + toTileTemplateCs.parent.name
-                             
-                
+
+
                 #north
                 retNTileTempList = tileSetTemplate.tileTempToPortDictReverse.get(tupN)
-            
+
                 if retNTileTempList is not None:
                     retNTileTemp = retNTileTempList[0]
                     if type(retNTileTemp[0]) in [TileTemplate,Tile]:
                         #add output neighborhood
-                        
+
                         inputNbrhd = (toTileTemplateCs.parent)._getNeighborhoodForJoin(nNbhdStrength, Direction.North, retNTileTemp[0], toTileTemplateCs)
                         if inputNbrhd.glueAnnotation is not None:
                             if toTileTemplateCs.parent.name in inputNbrhd.glueAnnotation:
                                 pass
                             else:
                                 inputNbrhd.glueAnnotation += "-" + toTileTemplateCs.parent.name
-                                
-                            
-                            
+
+
+
                             if inputNbrhd != toTileTemplateCs.inputNeighborhood(Direction.South):
-                                
+
                                 if toTileTemplateCs.parent.name in toTileTemplateCs.inputNeighborhood(Direction.South).glueAnnotation:
                                     pass
                                 else:
                                     toTileTemplateCs.inputNeighborhood(Direction.South).glueAnnotation += "-" + toTileTemplateCs.parent.name
-                                    
-                                
-                        
+
+
+
                 if tupN in tileSetTemplate.tileTempToPortDict.keys():
                     newValTupTileTemp = tileSetTemplate.tileTempToPortDict.get(tupN)[0]
                     if type(newValTupTileTemp[0]) in [TileTemplate,Tile]:
@@ -4361,13 +4345,13 @@ class Module(object):
                                 pass
                             else:
                                 outputNbrhd.glueAnnotation += "-" + toTileTemplateCs.parent.name
-                           
+
                             if outputNbrhd != toTileTemplateCs.outputNeighborhood(Direction.North):
                                 if toTileTemplateCs.parent.name in toTileTemplateCs.outputNeighborhood(Direction.North).glueAnnotation:
                                     pass
                                 else:
                                     toTileTemplateCs.outputNeighborhood(Direction.North).glueAnnotation += "-" + toTileTemplateCs.parent.name
-                            
+
                 if tupNOtherDirectionOne in tileSetTemplate.tileTempToPortDict.keys():
                     newValTupTileTemp = tileSetTemplate.tileTempToPortDict.get(tupNOtherDirectionOne)[0]
                     if type(newValTupTileTemp[0]) in [TileTemplate,Tile]:
@@ -4377,13 +4361,13 @@ class Module(object):
                                 pass
                             else:
                                 outputNbrhd.glueAnnotation += "-" + toTileTemplateCs.parent.name
-                            
+
                             if outputNbrhd != toTileTemplateCs.outputNeighborhood(Direction.North):
                                 if toTileTemplateCs.parent.name in toTileTemplateCs.outputNeighborhood(Direction.North).glueAnnotation:
                                     pass
                                 else:
                                     toTileTemplateCs.outputNeighborhood(Direction.North).glueAnnotation += "-" + toTileTemplateCs.parent.name
-                               
+
                 if tupNOtherDirectionTwo in tileSetTemplate.tileTempToPortDict.keys():
                     newValTupTileTemp = tileSetTemplate.tileTempToPortDict.get(tupNOtherDirectionTwo)[0]
                     if type(newValTupTileTemp[0]) in [TileTemplate,Tile]:
@@ -4393,15 +4377,15 @@ class Module(object):
                                 pass
                             else:
                                 outputNbrhd.glueAnnotation += "-" + toTileTemplateCs.parent.name
-                            
+
                             if outputNbrhd != toTileTemplateCs.outputNeighborhood(Direction.North):
                                 if toTileTemplateCs.parent.name in toTileTemplateCs.outputNeighborhood(Direction.North).glueAnnotation:
                                     pass
                                 else:
                                     toTileTemplateCs.outputNeighborhood(Direction.North).glueAnnotation += "-" + toTileTemplateCs.parent.name
-                                
-                                
-                            
+
+
+
                 #south
                 retSTileTempList = tileSetTemplate.tileTempToPortDictReverse.get(tupS)
                 if retSTileTempList is not None:
@@ -4414,15 +4398,15 @@ class Module(object):
                                 pass
                             else:
                                 inputNbrhd.glueAnnotation += "-" + toTileTemplateCs.parent.name
-                            
+
                             if inputNbrhd != toTileTemplateCs.inputNeighborhood(Direction.North):
-                                
+
                                 if toTileTemplateCs.parent.name in toTileTemplateCs.inputNeighborhood(Direction.North).glueAnnotation:
                                     pass
                                 else:
                                     toTileTemplateCs.inputNeighborhood(Direction.North).glueAnnotation += "-" + toTileTemplateCs.parent.name
-                        
-                        
+
+
                 if tupS in tileSetTemplate.tileTempToPortDict.keys():
                     newValTupTileTemp = tileSetTemplate.tileTempToPortDict.get(tupS)[0]
                     if type(newValTupTileTemp[0]) in [TileTemplate,Tile]:
@@ -4432,13 +4416,13 @@ class Module(object):
                                 pass
                             else:
                                 outputNbrhd.glueAnnotation += "-" + toTileTemplateCs.parent.name
-                                
+
                             if outputNbrhd != toTileTemplateCs.outputNeighborhood(Direction.South):
                                 if toTileTemplateCs.parent.name in toTileTemplateCs.outputNeighborhood(Direction.South).glueAnnotation:
                                     pass
                                 else:
                                     toTileTemplateCs.outputNeighborhood(Direction.South).glueAnnotation += "-" + toTileTemplateCs.parent.name
-                                
+
                 if tupSOtherDirectionOne in tileSetTemplate.tileTempToPortDict.keys():
                     newValTupTileTemp = tileSetTemplate.tileTempToPortDict.get(tupSOtherDirectionOne)[0]
                     if type(newValTupTileTemp[0]) in [TileTemplate,Tile]:
@@ -4448,13 +4432,13 @@ class Module(object):
                                 pass
                             else:
                                 outputNbrhd.glueAnnotation += "-" + toTileTemplateCs.parent.name
-                                
+
                             if outputNbrhd != toTileTemplateCs.outputNeighborhood(Direction.South):
                                 if toTileTemplateCs.parent.name in toTileTemplateCs.outputNeighborhood(Direction.South).glueAnnotation:
                                     pass
                                 else:
                                     toTileTemplateCs.outputNeighborhood(Direction.South).glueAnnotation += "-" + toTileTemplateCs.parent.name
-                                
+
                 if tupSOtherDirectionTwo in tileSetTemplate.tileTempToPortDict.keys():
                     newValTupTileTemp = tileSetTemplate.tileTempToPortDict.get(tupSOtherDirectionTwo)[0]
                     if type(newValTupTileTemp[0]) in [TileTemplate,Tile]:
@@ -4463,70 +4447,70 @@ class Module(object):
                             if toTileTemplateCs.parent.name in outputNbrhd.glueAnnotation:
                                 pass
                             else:
-                                outputNbrhd.glueAnnotation += "-" + toTileTemplateCs.parent.name   
-                        
+                                outputNbrhd.glueAnnotation += "-" + toTileTemplateCs.parent.name
+
                         if outputNbrhd != toTileTemplateCs.outputNeighborhood(Direction.South):
                                 if toTileTemplateCs.parent.name in toTileTemplateCs.outputNeighborhood(Direction.South).glueAnnotation:
                                     pass
                                 else:
                                     toTileTemplateCs.outputNeighborhood(Direction.South).glueAnnotation += "-" + toTileTemplateCs.parent.name
-                
-                try: 
+
+                try:
                     if toTileTemplateCs.parent.name not in toTileTemplateCs.inputNeighborhood(Direction.North).glueAnnotation:
                         if 'rootMod' not in toTileTemplateCs.inputNeighborhood(Direction.North).glueAnnotation:
                             toTileTemplateCs.inputNeighborhood(Direction.North).glueAnnotation += "-" + tileTemplate.parent.name
                 except ValueError:
-                    pass  
-                try: 
+                    pass
+                try:
                     if toTileTemplateCs.parent.name not in toTileTemplateCs.inputNeighborhood(Direction.East).glueAnnotation:
                         if 'rootMod' not in toTileTemplateCs.inputNeighborhood(Direction.East).glueAnnotation:
                             toTileTemplateCs.inputNeighborhood(Direction.East).glueAnnotation += "-" + tileTemplate.parent.name
                 except ValueError:
                     pass
-                try: 
+                try:
                     if toTileTemplateCs.parent.name not in toTileTemplateCs.inputNeighborhood(Direction.South).glueAnnotation:
                         if 'rootMod' not in toTileTemplateCs.inputNeighborhood(Direction.South).glueAnnotation:
                             toTileTemplateCs.inputNeighborhood(Direction.South).glueAnnotation += "-" + tileTemplate.parent.name
                 except ValueError:
                     pass
-                try: 
+                try:
                     if toTileTemplateCs.parent.name not in toTileTemplateCs.inputNeighborhood(Direction.West).glueAnnotation:
                         if 'rootMod' not in toTileTemplateCs.inputNeighborhood(Direction.West).glueAnnotation:
                             toTileTemplateCs.inputNeighborhood(Direction.West).glueAnnotation += "-" + tileTemplate.parent.name
                 except ValueError:
-                    pass   
-                
-                
-                try: 
+                    pass
+
+
+                try:
                     if toTileTemplateCs.parent.name not in toTileTemplateCs.outputNeighborhood(Direction.North).glueAnnotation:
                         if 'rootMod' not in toTileTemplateCs.outputNeighborhood(Direction.North).glueAnnotation:
                             toTileTemplateCs.outputNeighborhood(Direction.North).glueAnnotation += "-" + tileTemplate.parent.name
                 except ValueError:
-                    pass  
-                try: 
+                    pass
+                try:
                     if toTileTemplateCs.parent.name not in toTileTemplateCs.outputNeighborhood(Direction.East).glueAnnotation:
                         if 'rootMod' not in toTileTemplateCs.outputNeighborhood(Direction.East).glueAnnotation:
                             toTileTemplateCs.outputNeighborhood(Direction.East).glueAnnotation += "-" + tileTemplate.parent.name
                 except ValueError:
                     pass
-                try: 
+                try:
                     if toTileTemplateCs.parent.name not in toTileTemplateCs.outputNeighborhood(Direction.South).glueAnnotation:
                         if 'rootMod' not in toTileTemplateCs.outputNeighborhood(Direction.South).glueAnnotation:
                             toTileTemplateCs.outputNeighborhood(Direction.South).glueAnnotation += "-" + tileTemplate.parent.name
                 except ValueError:
                     pass
-                try: 
+                try:
                     if toTileTemplateCs.parent.name not in toTileTemplateCs.outputNeighborhood(Direction.West).glueAnnotation:
                         if 'rootMod' not in toTileTemplateCs.outputNeighborhood(Direction.West).glueAnnotation:
                             toTileTemplateCs.outputNeighborhood(Direction.West).glueAnnotation += "-" + tileTemplate.parent.name
                 except ValueError:
-                    pass       
-                
-                
-                
-                
-                
-            
+                    pass
+
+
+
+
+
+
             for inputMultisignal in chooserSet.inputMultisignalType():
                 tileTemplates = chooserSet.chooseTileTemplates(inputMultisignal)
                 for tileTemplate in tileTemplates:
@@ -4534,26 +4518,33 @@ class Module(object):
                     tiles.extend(tilesFromTileTemplate)
                     if tileTemplate.numInputSides() == 0:
                         tileTemplatesWithoutInputs.add(tileTemplate)
-        
-        # Handle tiles with no inputs, which are typically Tiles wrapped in TileTemplates        
+
+
+        # Handle tiles with no inputs, which are typically Tiles wrapped in TileTemplates
         emptyMs = Multisignal(())
-        
+
+        for tile in self.tile_templates:
+            if tile.numInputSides() == 0:
+                tileTemplatesWithoutInputs.add(tile)
+
+
 #         for tileTemplateWithoutInput in self.tilesWithoutInputs:
         for tileTemplateWithoutInput in tileTemplatesWithoutInputs:
+
             tilesFromTileTemplate = tileTemplateWithoutInput.createTilesFromInputMultisignal(emptyMs)
             tiles.extend(tilesFromTileTemplate)
 
         return [tile for tile in tiles if tile is not None]
-    
 
-        
-        
-        
-        
-        
-        
-        
-       
+
+
+
+
+
+
+
+
+
 
 #The Multisignal passed within a Port must be singular and have only one value
 class Port(object):
@@ -4566,29 +4557,29 @@ class Port(object):
         self.inputJoins = []
         self.inputObjectDict = {}
         self.outputObjectDict = {}
-        
+
     def __repr__(self):
-        return self.name 
-    
+        return self.name
+
     def clone(self):
-        newName = self.name 
+        newName = self.name
         newOutputDirection = self.outputDirection
         newInputDirection = self.inputDirection
         newInputObjectDict = dict(self.inputObjectDict)
         newOutputObjectDict = dict(self.outputObjectDict)
-        
+
         newPort = Port(newName)
         newPort.outputDirection = newOutputDirection
         newPort.inputDirection = newInputDirection
         newPort.inputObjectDict = newInputObjectDict
         newPort.outputObjectDict = newOutputObjectDict
-        
+
         return newPort
-        
-        
-        
+
+
+
     def outputDirMultisignalTypeDict(self):
-        """Return dict mapping (direction, MultisignalType), 
+        """Return dict mapping (direction, MultisignalType),
         of output multisignal types."""
         ret = collections.defaultdict(MultisignalType)
         for join in self.outputJoins:
@@ -4600,7 +4591,7 @@ class Port(object):
 
         return ret
     def inputDirMultisignalTypeDict(self):
-        """Return dict mapping (direction, MultisignalType), including Nondet, 
+        """Return dict mapping (direction, MultisignalType), including Nondet,
         of input multisignal types."""
         ret = collections.defaultdict(MultisignalType)
         for join in self.inputJoins:
@@ -4609,7 +4600,7 @@ class Port(object):
                 ret[direction] = ret[direction].valueUnion(join.multisignalType)
             else:
                 ret[direction] = join.multisignalType
-        
+
         return ret
     def inputNeighborhoods(self):
         retDict = {}
@@ -4636,7 +4627,7 @@ class Port(object):
         else:
             mst = mstDict[direction]
         return mst
-    
+
     def isValidInputMultisignal(self, ms):
         """Indicates whether ms is a valid multisignal for this TileTemplate's total input multisignal type."""
         inputMultisignalType = self.inputMultisignalType()
@@ -4644,7 +4635,7 @@ class Port(object):
 
 
 
-#how to implement it, like distinguish it from the filler Port in the Join - just have it in the add portion of the module and set a condition for the strength?
+
 class initiatorPort(object):
     def __init__(self, name, strength, toModule ):
         self.name = name
@@ -4658,28 +4649,28 @@ class initiatorPort(object):
         self.strength = strength
         self.toModule = toModule #is this to the Module it is added to or from it
     def __repr__(self):
-        return self.name 
-    
+        return self.name
+
     def clone(self):
-        newName = self.name 
+        newName = self.name
         newOutputDirection = self.outputDirection
         newInputDirection = self.inputDirection
         newInputObjectDict = dict(self.inputObjectDict)
         newOutputObjectDict = dict(self.outputObjectDict)
         newStrength = self.strength
         newToModule = self.toModule
-        
+
         newPort = initiatorPort(newName, newStrength, newToModule)
         newPort.outputDirection = newOutputDirection
         newPort.inputDirection = newInputDirection
         newPort.inputObjectDict = newInputObjectDict
         newPort.outputObjectDict = newOutputObjectDict
-  
-        
+
+
         return newPort
-        
+
     def outputDirMultisignalTypeDict(self):
-        """Return dict mapping (direction, MultisignalType), 
+        """Return dict mapping (direction, MultisignalType),
         of output multisignal types."""
         ret = collections.defaultdict(MultisignalType)
         for join in self.outputJoins:
@@ -4691,7 +4682,7 @@ class initiatorPort(object):
 
         return ret
     def inputDirMultisignalTypeDict(self):
-        """Return dict mapping (direction, MultisignalType), including Nondet, 
+        """Return dict mapping (direction, MultisignalType), including Nondet,
         of input multisignal types."""
         ret = collections.defaultdict(MultisignalType)
         for join in self.inputJoins:
@@ -4700,7 +4691,7 @@ class initiatorPort(object):
                 ret[direction] = ret[direction].valueUnion(join.multisignalType)
             else:
                 ret[direction] = join.multisignalType
-        
+
         return ret
     def inputNeighborhoods(self):
         retDict = {}
@@ -4709,7 +4700,7 @@ class initiatorPort(object):
                 if join.neighborhood.direction == oppositeDirection(direction):
                     retDict[direction] = join.neighborhood
         return retDict
-    
+
     def outputNeighborhood(self, direction):
         ''' JP - Returns the neighborhood given on the output side '''
         for join in self.outputJoins:
@@ -4728,11 +4719,8 @@ class initiatorPort(object):
         else:
             mst = mstDict[direction]
         return mst
-    
+
     def isValidInputMultisignal(self, ms):
         """Indicates whether ms is a valid multisignal for this TileTemplate's total input multisignal type."""
         inputMultisignalType = self.inputMultisignalType()
         return inputMultisignalType.isValidMultisignal(ms)
-    
-
-
