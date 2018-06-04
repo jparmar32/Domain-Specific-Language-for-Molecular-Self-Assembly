@@ -3,53 +3,53 @@ Created on Jul 7, 2017
 
 @author: jupiparmar1
 '''
-import tam2
+import tam3
 
-N = tam2.Direction.North
-S = tam2.Direction.South
-E = tam2.Direction.East
-W = tam2.Direction.West
+N = tam3.Direction.North
+S = tam3.Direction.South
+E = tam3.Direction.East
+W = tam3.Direction.West
 
 def addTileTemplatesToModule(tileTempList, module):
     for tile in tileTempList:
         module.add(tile)
 def createTiles(module,tileSetTemplate, filename):
     tiles = module.createTiles(tst)
-    tileSystem = tam2.TileSystem(filename,tiles)
+    tileSystem = tam3.TileSystem(filename,tiles)
     tileSystem.writeToFiles(filename)
 
-leftSeedTuringCont = tam2.TileTemplate("leftSeedTuringCont")
-middleSeedTuringCont = tam2.TileTemplate("middleSeedTuringCont")
-rightSeedTuringCont = tam2.TileTemplate("rightSeedTuringCont")
+leftSeedTuringCont = tam3.TileTemplate("leftSeedTuringCont")
+middleSeedTuringCont = tam3.TileTemplate("middleSeedTuringCont")
+rightSeedTuringCont = tam3.TileTemplate("rightSeedTuringCont")
 
-seedLeft = tam2.TileTemplate("seedLeft")
-seedMiddle = tam2.TileTemplate("seedMiddle")
-seedRight = tam2.TileTemplate("seedRight")
+seedLeft = tam3.TileTemplate("seedLeft")
+seedMiddle = tam3.TileTemplate("seedMiddle")
+seedRight = tam3.TileTemplate("seedRight")
 
-transToPortLeft = tam2.TileTemplate("transToPortLeft")
-transToPortMiddle = tam2.TileTemplate("transToPortMiddle")
-transToPortRight = tam2.TileTemplate("transToPortRight")
-leftFillerSignificant = tam2.TileTemplate("leftFillerSignificant")
+transToPortLeft = tam3.TileTemplate("transToPortLeft")
+transToPortMiddle = tam3.TileTemplate("transToPortMiddle")
+transToPortRight = tam3.TileTemplate("transToPortRight")
+leftFillerSignificant = tam3.TileTemplate("leftFillerSignificant")
 def createTuringMod(name,tst):
-    turingMod = tam2.Module(name)
+    turingMod = tam3.Module(name)
 
 
-    mainTM = tam2.TileTemplate("mainTM")
-    transTM = tam2.TileTemplate("transTM")
-    rightFiller = tam2.TileTemplate("rightFiller")
+    mainTM = tam3.TileTemplate("mainTM")
+    transTM = tam3.TileTemplate("transTM")
+    rightFiller = tam3.TileTemplate("rightFiller")
 
-    leftFiller = tam2.TileTemplate("leftFiller")
-    endMainTM = tam2.TileTemplate("endMainTM")
-    extendLine = tam2.TileTemplate("extendLine")
+    leftFiller = tam3.TileTemplate("leftFiller")
+    endMainTM = tam3.TileTemplate("endMainTM")
+    extendLine = tam3.TileTemplate("extendLine")
     tiles = [mainTM,transTM,rightFiller,leftFiller,leftFillerSignificant,endMainTM,extendLine,leftSeedTuringCont,middleSeedTuringCont,rightSeedTuringCont,seedLeft,seedMiddle,seedRight,transToPortLeft,transToPortMiddle,transToPortRight]
     addTileTemplatesToModule(tiles, turingMod)
 
-    extendToBotTran = tam2.TileTemplate("extendToBotTran")
-    toBotFill = tam2.TileTemplate("toBotFill")
-    toBotSkipModPre = tam2.TileTemplate("toBotSkipModPre")
-    toBotSkipMod = tam2.TileTemplate("toBotSkipMod")
-    toBotSkipBottomModPre = tam2.TileTemplate("toBotSkipModPre")
-    toBotSkipBottomMod = tam2.TileTemplate("toBotSkipMod")
+    extendToBotTran = tam3.TileTemplate("extendToBotTran")
+    toBotFill = tam3.TileTemplate("toBotFill")
+    toBotSkipModPre = tam3.TileTemplate("toBotSkipModPre")
+    toBotSkipMod = tam3.TileTemplate("toBotSkipMod")
+    toBotSkipBottomModPre = tam3.TileTemplate("toBotSkipModPre")
+    toBotSkipBottomMod = tam3.TileTemplate("toBotSkipMod")
 
     turingMod.add(extendToBotTran)
     turingMod.add(toBotFill)
@@ -151,15 +151,15 @@ def createTuringMod(name,tst):
 
     return turingMod
 
-leftBeg = tam2.TileTemplate("leftBeg")
-middleBeg = tam2.TileTemplate("middleBeg")
-rightBeg = tam2.TileTemplate("rightBeg")
+leftBeg = tam3.TileTemplate("leftBeg")
+middleBeg = tam3.TileTemplate("middleBeg")
+rightBeg = tam3.TileTemplate("rightBeg")
 
-leftCont = tam2.TileTemplate("leftCont")
-middleCont = tam2.TileTemplate("middleCont")
-rightCont = tam2.TileTemplate("rightCont")
+leftCont = tam3.TileTemplate("leftCont")
+middleCont = tam3.TileTemplate("middleCont")
+rightCont = tam3.TileTemplate("rightCont")
 def createTransTuringMod(name,tst):
-    transTuringMod = tam2.Module(name)
+    transTuringMod = tam3.Module(name)
     tiles = [leftBeg,middleBeg,rightBeg,leftCont,middleCont,rightCont]
     addTileTemplatesToModule(tiles, transTuringMod)
 
@@ -173,26 +173,26 @@ def createTransTuringMod(name,tst):
     return transTuringMod
 
 
-botFillTile = tam2.TileTemplate("botFill")
-topPreSkip = tam2.TileTemplate("topPreSkip")
-rightFillLeft = tam2.TileTemplate("rightFillLeft")
-contLeftStart = tam2.TileTemplate("contLeftStart")
-contLeftStartTwo = tam2.TileTemplate("contLeftStartTwo")
-initialTile = tam2.TileTemplate("initialTile")
+botFillTile = tam3.TileTemplate("botFill")
+topPreSkip = tam3.TileTemplate("topPreSkip")
+rightFillLeft = tam3.TileTemplate("rightFillLeft")
+contLeftStart = tam3.TileTemplate("contLeftStart")
+contLeftStartTwo = tam3.TileTemplate("contLeftStartTwo")
+initialTile = tam3.TileTemplate("initialTile")
 def createLeftCounterMod(name,tst):
-    leftCounterMod = tam2.Module(name)
+    leftCounterMod = tam3.Module(name)
 
-    skipTile = tam2.TileTemplate("skipTile")
+    skipTile = tam3.TileTemplate("skipTile")
 
 
 
-    extendTileLeft = tam2.TileTemplate("extendTileLeft")
-    leftFillLeft = tam2.TileTemplate("leftFillLeft")
-    middleFillLeft = tam2.TileTemplate("middleFillLeft")
+    extendTileLeft = tam3.TileTemplate("extendTileLeft")
+    leftFillLeft = tam3.TileTemplate("leftFillLeft")
+    middleFillLeft = tam3.TileTemplate("middleFillLeft")
 
-    shiftToExtend = tam2.TileTemplate("shiftToExtend")
-    topFillLine = tam2.TileTemplate("topFillLine")
-    topSkip = tam2.TileTemplate("TopSkip")
+    shiftToExtend = tam3.TileTemplate("shiftToExtend")
+    topFillLine = tam3.TileTemplate("topFillLine")
+    topSkip = tam3.TileTemplate("TopSkip")
 
     tiles = [botFillTile,topPreSkip,rightFillLeft,contLeftStart,contLeftStartTwo,initialTile, skipTile, extendTileLeft, leftFillLeft, middleFillLeft, shiftToExtend, topFillLine, topSkip]
     addTileTemplatesToModule(tiles, leftCounterMod)
@@ -234,13 +234,13 @@ def createBringResultMod(name,tst):
     pass
 def createBottomMod(name,tst):
     pass
-portToContLeft = tam2.Port("portToContLeft")
-portToContMid = tam2.Port("portToContMid")
-portToContRight = tam2.Port("portToContRight")
+portToContLeft = tam3.Port("portToContLeft")
+portToContMid = tam3.Port("portToContMid")
+portToContRight = tam3.Port("portToContRight")
 
-portFromContLeft = tam2.Port("portFormContLeft")
-portFromContMid = tam2.Port("portFromContMid")
-portFromContRight = tam2.Port("portFromContRight")
+portFromContLeft = tam3.Port("portFormContLeft")
+portFromContMid = tam3.Port("portFromContMid")
+portFromContRight = tam3.Port("portFromContRight")
 def fromTuringToTransPorts(mod1, root, mod2, tst):
     mod1.add_port(portToContLeft, N)
     mod1.add_port(portToContMid, N)
@@ -263,13 +263,13 @@ def fromTuringToTransPorts(mod1, root, mod2, tst):
     mod2.join(1, N, portFromContMid, middleCont, tst, portContMid = "0")
     mod2.join(1, N, portFromContRight, rightCont, tst, portContRight = ("R-","A-"))
 
-portToContTuringLeft = tam2.Port("portToContTuringLeft")
-portToContTuringMid = tam2.Port("portToContTuringMid")
-portToContTuringRight = tam2.Port("portToContTuringRight")
+portToContTuringLeft = tam3.Port("portToContTuringLeft")
+portToContTuringMid = tam3.Port("portToContTuringMid")
+portToContTuringRight = tam3.Port("portToContTuringRight")
 
-portFromContTuringLeft = tam2.Port("portFormContTuringLeft")
-portFromContTuringMid = tam2.Port("portFromContTuringMid")
-portFromContTuringRight = tam2.Port("portFromContTuringRight")
+portFromContTuringLeft = tam3.Port("portFormContTuringLeft")
+portFromContTuringMid = tam3.Port("portFromContTuringMid")
+portFromContTuringRight = tam3.Port("portFromContTuringRight")
 def fromTransToTuringPorts(mod1, root, mod2, tst):
     mod1.add_port(portToContTuringLeft, N)
     mod1.add_port(portToContTuringMid, N)
@@ -293,13 +293,13 @@ def fromTransToTuringPorts(mod1, root, mod2, tst):
     mod2.join(1, N, portFromContTuringRight, rightSeedTuringCont, tst, portContTuringRight = "-")
 
 
-portToLeftMost = tam2.Port("portToLeftMost")
-portToMiddleMost = tam2.Port("portToMiddleMost")
-portToRightMost = tam2.Port("portToRightMost")
+portToLeftMost = tam3.Port("portToLeftMost")
+portToMiddleMost = tam3.Port("portToMiddleMost")
+portToRightMost = tam3.Port("portToRightMost")
 
-portFromLeftMost = tam2.Port("portFromLeftMost")
-portFromMiddleMost = tam2.Port("portFromMiddleMost")
-portFromRightMost = tam2.Port("portFromRightMost")
+portFromLeftMost = tam3.Port("portFromLeftMost")
+portFromMiddleMost = tam3.Port("portFromMiddleMost")
+portFromRightMost = tam3.Port("portFromRightMost")
 def fromTransToTuringInitialPorts(mod1, root, mod2, tst):
     mod1.add_port(portToLeftMost, N)
     mod1.add_port(portToMiddleMost, N)
@@ -322,8 +322,8 @@ def fromTransToTuringInitialPorts(mod1, root, mod2, tst):
     mod2.join(1, N,  portFromMiddleMost, seedMiddle, tst, portToMiddle = "pTM")
     mod2.join(1, N, portFromRightMost, seedRight, tst, portToRight = "pTR")
 
-portFromContLeftTuringToLeft = tam2.Port("portFromContLeftTuringToLeft")
-portToContLeftTuringToLeft = tam2.Port("portToContLeftToLeft")
+portFromContLeftTuringToLeft = tam3.Port("portFromContLeftTuringToLeft")
+portToContLeftTuringToLeft = tam3.Port("portToContLeftToLeft")
 def fromTransTuringToLeftCounterPorts(mod1, root, mod2, tst):
     mod1.add_port(portFromContLeftTuringToLeft, W)
     mod2.add_port(portToContLeftTuringToLeft, W)
@@ -337,11 +337,11 @@ def fromTransTuringToLeftCounterPorts(mod1, root, mod2, tst):
     mod2.join(1, W, portToContLeftTuringToLeft, contLeftStart, tst, toContLeft = "tCL")
     mod2.join(1, W, portToContLeftTuringToLeft, contLeftStartTwo, tst, toContLeft = "tCL")
 
-portFromSeedLeft = tam2.Port("portFromSeedLeft")
-portToInitTile = tam2.Port("portToInitTile")
+portFromSeedLeft = tam3.Port("portFromSeedLeft")
+portToInitTile = tam3.Port("portToInitTile")
 
-portFromTuringFill = tam2.Port("portFromTuringFill")
-portToLeftFill = tam2.Port("portToLeftFill")
+portFromTuringFill = tam3.Port("portFromTuringFill")
+portToLeftFill = tam3.Port("portToLeftFill")
 def fromTuringToLeftCounterPorts(mod1, root, mod2, tst):
     mod1.add_port(portFromSeedLeft, W)
     mod1.add_port(portFromTuringFill, W)
@@ -366,10 +366,10 @@ def fromTuringToLeftCounterPorts(mod1, root, mod2, tst):
     mod2.join(1, W, portToLeftFill, topPreSkip, tst, toBotLeftFill = "tBLF")
 if __name__ == '__main__':
     #create mandatory tile set template
-    tst = tam2.TileSetTemplate()
+    tst = tam3.TileSetTemplate()
 
     #create root module
-    rootMod = tam2.Module("rootMod")
+    rootMod = tam3.Module("rootMod")
 
     alphabet = ['0','1','_']
 
