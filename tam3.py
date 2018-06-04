@@ -4666,6 +4666,10 @@ class Module(object):
 
         # Handle tiles with no inputs, which are typically Tiles wrapped in TileTemplates
         emptyMs = Multisignal(())
+        
+        for tile in self.tile_templates:
+            if tile.numInputSides() == 0:
+                tileTemplatesWithoutInputs.add(tile)
 
 #         for tileTemplateWithoutInput in self.tilesWithoutInputs:
         for tileTemplateWithoutInput in tileTemplatesWithoutInputs:
