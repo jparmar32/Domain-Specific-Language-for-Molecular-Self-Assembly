@@ -1,0 +1,25 @@
+<TabbedLayout>:
+    do_default_tab: False
+    TabbedPanelItem:
+        text: 'Objects'
+        BoxLayout:
+            Spinner:
+                size_hint: .2,.1
+                text: 'Choose Object'
+                id: objectCreator
+                values: ['Tile Set Template', 'Root Module', 'Module', 'Tile Template', 'Port']
+                
+            Button:
+                size_hint: .2,.1
+                text: "Create Object"
+                on_release: root.onRelease()
+                
+               
+    TabbedPanelItem:
+        text: 'Canvas'
+        FloatLayout:
+            Scatter:
+                Label:
+                    id: canvasLabel
+                    text: 'Canvas'
+        
