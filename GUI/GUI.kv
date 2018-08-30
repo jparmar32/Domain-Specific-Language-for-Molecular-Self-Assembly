@@ -5,12 +5,31 @@
         BoxLayout:
             orientation: 'vertical'
             canvas.before:
+
+                StencilPush
                 Color:
                     rgba: .7, .7, .7, 1
                 Rectangle:
             
                     pos: self.pos
                     size: self.size
+                StencilUse
+                
+                Color:
+                    rgba: .7, .7, .7, 1
+                Rectangle:
+            
+                    pos: self.pos
+                    size: self.size
+            canvas.after:
+                StencilUnUse
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+                StencilPop
+            
+                
+
             BoxLayout:
                 orientation: 'horizontal'
                 size_hint_y: .05

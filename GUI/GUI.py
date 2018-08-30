@@ -168,7 +168,6 @@ class TabbedLayout(TabbedPanel):
 
 
 class GUI(App):
-    StringProperty Select1 = ""
 
     def build(self):
         return TabbedLayout()
