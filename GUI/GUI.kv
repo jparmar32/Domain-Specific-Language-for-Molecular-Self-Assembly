@@ -4,29 +4,7 @@
         text: 'Canvas'
         BoxLayout:
             orientation: 'vertical'
-            canvas.before:
-
-                StencilPush
-                Color:
-                    rgba: .7, .7, .7, 1
-                Rectangle:
             
-                    pos: self.pos
-                    size: self.size
-                StencilUse
-                
-                Color:
-                    rgba: .7, .7, .7, 1
-                Rectangle:
-            
-                    pos: self.pos
-                    size: self.size
-            canvas.after:
-                StencilUnUse
-                Rectangle:
-                    pos: self.pos
-                    size: self.size
-                StencilPop
             
                 
 
@@ -66,19 +44,39 @@
                     text: "Execute Function"
                     on_release: root.executeFunction()
 
-            ScatterLayout:
-                id: scatterID
-                size_hint_y: 1
+            BoxLayout:
+
+                canvas.before:
+
+                    StencilPush
+                    Color:
+                        rgba: .7, .7, .7, 1
+                    Rectangle:
+            
+                        pos: self.pos
+                        size: self.size
+                    StencilUse
+                
+                    Color:
+                        rgba: .7, .7, .7, 1
+                    Rectangle:
+            
+                        pos: self.pos
+                        size: self.size
+                canvas.after:
+                    StencilUnUse
+                    Rectangle:
+                        pos: self.pos
+                        size: self.size
+                    StencilPop
+
+                ScatterLayout:
+                
+                    id: scatterID
+                    size_hint_y: 1
 
                 
-                #Label:
-                    #id: canvasLabel 
-                    #text: "object"
-                #DragLabel:
-                    #text: "wut wut"
-                    #size_hint: (.2, .2)
-       
-           
+                    
                
     TabbedPanelItem:
         text: 'Exit'
